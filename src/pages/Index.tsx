@@ -1,14 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import CapacityMeter from "@/components/CapacityMeter";
+import LastUpdated from "@/components/LastUpdated";
+import OperatingHours from "@/components/OperatingHours";
+import AnnouncementBanner from "@/components/AnnouncementBanner";
 
-const Index = () => {
+const Dashboard = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="container py-6">
+      <div className="mb-6">
+        <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
+          Recreation Center
+        </h1>
+        <div className="mt-2">
+          <LastUpdated />
+        </div>
+      </div>
+
+      <AnnouncementBanner />
+
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <CapacityMeter />
+        <OperatingHours />
       </div>
     </div>
   );
 };
 
-export default Index;
+export default Dashboard;
