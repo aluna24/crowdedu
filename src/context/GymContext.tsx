@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface FloorData {
   id: string;
@@ -23,6 +24,23 @@ interface GymContextType extends GymState {
   totalPercent: number;
   totalStatus: "Low" | "Moderate" | "High";
 }
+
+// Mapping between app floor IDs and Supabase column names
+export const FLOOR_DB_MAP: Record<string, string> = {
+  multipurpose: "Multipurpose Room",
+  "4th-courts": "4th floor courts",
+  "4th-squash": "4th floor squash courts",
+  "3m": "3M",
+  "3rd-courts": "3rd floor courts",
+  "3rd-squash": "3rd floor squash courts",
+  fc: "Fitness Center",
+  pool: "Pool",
+  p3: "P3",
+};
+
+const DB_FLOOR_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(FLOOR_DB_MAP).map(([k, v]) => [v, k])
+);
 
 const defaultFloors: FloorData[] = [
   { id: "multipurpose", name: "Multipurpose Room", currentCount: 0, maxCapacity: 60 },
@@ -50,6 +68,16 @@ function getStatus(percent: number): "Low" | "Moderate" | "High" {
   return percent < 40 ? "Low" : percent < 75 ? "Moderate" : "High";
 }
 
+function applyDbRow(row: Record<string, unknown>, prev: FloorData[]): FloorData[] {
+  return prev.map((f) => {
+    const col = FLOOR_DB_MAP[f.id];
+    if (col && row[col] !== undefined) {
+      return { ...f, currentCount: Number(row[col]) };
+    }
+    return f;
+  });
+}
+
 const GymContext = createContext<GymContextType | null>(null);
 
 export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,9 +85,46 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [announcement, setAnnouncementState] = useState("");
 
+  // Fetch latest row on mount
+  useEffect(() => {
+    const fetchLatest = async () => {
+      const { data, error } = await supabase
+        .from("facility_count")
+        .select("*")
+        .order("Entry_num", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && data) {
+        setFloors((prev) => applyDbRow(data as Record<string, unknown>, prev));
+        setLastUpdated(new Date());
+      }
+    };
+    fetchLatest();
+  }, []);
+
+  // Subscribe to realtime inserts
+  useEffect(() => {
+    const channel = supabase
+      .channel("facility_count_changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "facility_count" },
+        (payload) => {
+          setFloors((prev) => applyDbRow(payload.new as Record<string, unknown>, prev));
+          setLastUpdated(new Date());
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const totalCount = floors.reduce((s, f) => s + f.currentCount, 0);
   const totalCapacity = floors.reduce((s, f) => s + f.maxCapacity, 0);
-  const totalPercent = Math.round((totalCount / totalCapacity) * 100);
+  const totalPercent = totalCapacity > 0 ? Math.round((totalCount / totalCapacity) * 100) : 0;
   const totalStatus = getStatus(totalPercent);
 
   const updateFloorCount = useCallback((floorId: string, count: number) => {
