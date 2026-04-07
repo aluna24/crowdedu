@@ -25,13 +25,15 @@ interface GymContextType extends GymState {
 }
 
 const defaultFloors: FloorData[] = [
-  { id: "fc", name: "Fitness Center", currentCount: 32, maxCapacity: 50 },
-  { id: "p3", name: "P3", currentCount: 12, maxCapacity: 30 },
-  { id: "4th-courts", name: "4th Floor Courts", currentCount: 18, maxCapacity: 40 },
-  { id: "3m", name: "3M", currentCount: 8, maxCapacity: 25 },
-  { id: "3rd-floor", name: "3rd Floor", currentCount: 15, maxCapacity: 35 },
-  { id: "pool", name: "Pool", currentCount: 22, maxCapacity: 40 },
-  { id: "p3-2", name: "P3", currentCount: 5, maxCapacity: 20 },
+  { id: "multipurpose", name: "Multipurpose Room", currentCount: 0, maxCapacity: 60 },
+  { id: "4th-courts", name: "4th Floor Courts", currentCount: 0, maxCapacity: 210 },
+  { id: "4th-squash", name: "4th Floor Squash Courts", currentCount: 0, maxCapacity: 18 },
+  { id: "3m", name: "3M", currentCount: 0, maxCapacity: 80 },
+  { id: "3rd-courts", name: "3rd Floor Courts", currentCount: 0, maxCapacity: 210 },
+  { id: "3rd-squash", name: "3rd Floor Squash Courts", currentCount: 0, maxCapacity: 18 },
+  { id: "fc", name: "Fitness Center", currentCount: 0, maxCapacity: 140 },
+  { id: "pool", name: "Pool", currentCount: 0, maxCapacity: 12 },
+  { id: "p3", name: "P3", currentCount: 0, maxCapacity: 60 },
 ];
 
 const defaultHours = [
