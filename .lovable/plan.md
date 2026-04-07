@@ -2,38 +2,39 @@
 
 ## Problem
 
-The capacity data is entirely managed in **local React state** (`GymContext`). The `facility_count` table in Supabase has real data (196 entries), but the app never reads from it. The Employee form also only updates local state — it never writes to Supabase. So:
+Two issues block headcount submissions from the Employee page:
 
-1. The Capacity page always starts at 0 for all areas
-2. Employee submissions don't persist
-3. Multiple users/tabs don't stay in sync
+1. **`Entry_num` has no default value** — The column is `NOT NULL` with no default. The Employee form doesn't set it, so every INSERT fails with a NOT NULL constraint violation.
+
+2. **RLS blocks anonymous inserts** — The INSERT policy only allows `authenticated` users, but the app uses mock authentication (not real Supabase Auth). All requests go through with the `anon` role, which is rejected by RLS.
 
 ## Plan
 
-### 1. Fetch latest counts from Supabase on load
+### 1. Add auto-increment default to `Entry_num`
 
-Update `GymContext` to query the `facility_count` table on mount, fetching the most recent row (highest `Entry_num`) and using those values to initialize floor counts.
+Create a migration to add a default value so new rows automatically get the next number:
 
-### 2. Subscribe to real-time updates
+```sql
+-- Create a sequence starting after the current max
+CREATE SEQUENCE facility_count_entry_num_seq;
+SELECT setval('facility_count_entry_num_seq', (SELECT COALESCE(MAX("Entry_num"), 0) FROM facility_count));
+ALTER TABLE facility_count ALTER COLUMN "Entry_num" SET DEFAULT nextval('facility_count_entry_num_seq');
+```
 
-- Enable realtime on the `facility_count` table (SQL migration: `ALTER PUBLICATION supabase_realtime ADD TABLE facility_count`)
-- Add a Supabase realtime subscription in `GymContext` that listens for `INSERT` events and updates floor counts automatically when new rows arrive
+### 2. Allow anonymous inserts (temporary for MVP)
 
-### 3. Write to Supabase on Employee form submit
+Since the app uses mock auth (no real Supabase Auth), update the INSERT RLS policy to also allow the `anon` role:
 
-Update the `Employee` page's `handleSubmit` to insert a new row into `facility_count` with all current floor values (keeping unchanged floors at their current counts, updating only the selected floor). This replaces the local-only `updateFloorCount` call.
+```sql
+DROP POLICY "Allow authenticated insert" ON facility_count;
+CREATE POLICY "Allow insert access"
+ON facility_count FOR INSERT
+TO anon, authenticated
+WITH CHECK (true);
+```
 
-### 4. Add RLS policy for public read access
+This is appropriate for the MVP since the Employee page is already behind mock role-based routing. When real Supabase Auth is implemented later, this can be tightened back to `authenticated` only.
 
-The `facility_count` table has no RLS policies. Add a policy allowing anonymous/public `SELECT` so the capacity page works for all visitors without login.
-
-### 5. Map Supabase columns to app floor IDs
-
-Create a mapping between the app's floor IDs (e.g. `"fc"`) and the Supabase column names (e.g. `"Fitness Center"`) to correctly read/write data.
-
-### Technical details
-
-- **Migration SQL**: Enable realtime + add RLS select policy
-- **Files modified**: `GymContext.tsx` (fetch + subscribe), `Employee.tsx` (insert row on submit)
-- **New mapping**: A constant object mapping floor IDs to DB column names, placed in `GymContext.tsx`
+### Files changed
+- **1 new migration** (SQL only, no app code changes needed)
 
