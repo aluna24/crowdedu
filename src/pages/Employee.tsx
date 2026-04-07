@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useGym } from "@/context/GymContext";
+import { useGym, FLOOR_DB_MAP } from "@/context/GymContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,15 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle } from "lucide-react";
 
 const Employee = () => {
-  const { floors, updateFloorCount } = useGym();
+  const { floors } = useGym();
   const [selectedFloor, setSelectedFloor] = useState(floors[0].id);
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const floor = floors.find((f) => f.id === selectedFloor)!;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess(false);
@@ -30,7 +32,35 @@ const Employee = () => {
       return;
     }
 
-    updateFloorCount(selectedFloor, num);
+    setSubmitting(true);
+
+    // Build the row with all current counts, updating only the selected floor
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+    const row: Record<string, unknown> = {
+      Date: dateStr,
+      Time: timeStr,
+    };
+
+    for (const f of floors) {
+      const col = FLOOR_DB_MAP[f.id];
+      if (col) {
+        row[col] = f.id === selectedFloor ? num : f.currentCount;
+      }
+    }
+
+    const { error: insertError } = await supabase.from("facility_count").insert(row as any);
+
+    setSubmitting(false);
+
+    if (insertError) {
+      setError("Failed to submit headcount. Please try again.");
+      console.error("Insert error:", insertError);
+      return;
+    }
+
     setSuccess(true);
     setValue("");
     setTimeout(() => setSuccess(false), 3000);
@@ -78,7 +108,9 @@ const Employee = () => {
           {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
         </div>
 
-        <Button type="submit" className="w-full">Submit Headcount</Button>
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Submitting…" : "Submit Headcount"}
+        </Button>
 
         {success && (
           <div className="flex items-center gap-2 rounded-md bg-capacity-low-bg p-3 text-sm font-medium text-capacity-low">
