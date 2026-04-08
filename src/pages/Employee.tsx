@@ -4,55 +4,57 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle } from "lucide-react";
 
 const Employee = () => {
   const { floors } = useGym();
-  const [selectedFloor, setSelectedFloor] = useState(floors[0].id);
-  const [value, setValue] = useState("");
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(floors.map((f) => [f.id, ""]))
+  );
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const floor = floors.find((f) => f.id === selectedFloor)!;
+  const setValue = (id: string, val: string) => {
+    setValues((prev) => ({ ...prev, [id]: val }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess(false);
 
-    const num = parseInt(value, 10);
-    if (isNaN(num) || num < 0) {
-      setError("Please enter a valid non-negative number.");
-      return;
-    }
-    if (num > floor.maxCapacity) {
-      setError(`Count cannot exceed max capacity (${floor.maxCapacity}) for ${floor.name}.`);
-      return;
+    // Validate all fields
+    for (const floor of floors) {
+      const raw = values[floor.id]?.trim();
+      if (!raw) {
+        setError(`Please enter a count for ${floor.name}.`);
+        return;
+      }
+      const num = parseInt(raw, 10);
+      if (isNaN(num) || num < 0) {
+        setError(`${floor.name}: please enter a valid non-negative number.`);
+        return;
+      }
+      if (num > floor.maxCapacity) {
+        setError(`${floor.name}: count cannot exceed max capacity (${floor.maxCapacity}).`);
+        return;
+      }
     }
 
     setSubmitting(true);
 
-    // Build the row with all current counts, updating only the selected floor
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
 
-    const row: Record<string, unknown> = {
-      Date: dateStr,
-      Time: timeStr,
-    };
-
-    for (const f of floors) {
-      const col = FLOOR_DB_MAP[f.id];
-      if (col) {
-        row[col] = f.id === selectedFloor ? num : f.currentCount;
-      }
+    const row: Record<string, unknown> = { Date: dateStr, Time: timeStr };
+    for (const floor of floors) {
+      const col = FLOOR_DB_MAP[floor.id];
+      if (col) row[col] = parseInt(values[floor.id], 10);
     }
 
     const { error: insertError } = await supabase.from("facility_count").insert(row as any);
-
     setSubmitting(false);
 
     if (insertError) {
@@ -62,60 +64,48 @@ const Employee = () => {
     }
 
     setSuccess(true);
-    setValue("");
+    setValues(Object.fromEntries(floors.map((f) => [f.id, ""])));
     setTimeout(() => setSuccess(false), 3000);
   };
 
   return (
-    <div className="container max-w-md py-6">
+    <div className="container max-w-lg py-6">
       <h1 className="font-display text-2xl font-bold text-foreground">Headcount Entry</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Select an area and submit the current headcount.
+        Enter the current headcount for each area below. All fields are required.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div>
-          <Label>Area</Label>
-          <Select value={selectedFloor} onValueChange={setSelectedFloor}>
-            <SelectTrigger className="mt-1.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {floors.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {floors.map((floor) => (
+          <div key={floor.id}>
+            <Label htmlFor={`hc-${floor.id}`}>
+              {floor.name}{" "}
+              <span className="text-muted-foreground font-normal">(max {floor.maxCapacity})</span>
+            </Label>
+            <Input
+              id={`hc-${floor.id}`}
+              type="number"
+              min={0}
+              max={floor.maxCapacity}
+              placeholder="0"
+              value={values[floor.id]}
+              onChange={(e) => setValue(floor.id, e.target.value)}
+              className="mt-1.5"
+              required
+            />
+          </div>
+        ))}
 
-        <div>
-          <Label htmlFor="headcount">
-            Current Headcount{" "}
-            <span className="text-muted-foreground font-normal">(max {floor.maxCapacity})</span>
-          </Label>
-          <Input
-            id="headcount"
-            type="number"
-            min={0}
-            max={floor.maxCapacity}
-            placeholder={`e.g. ${floor.currentCount}`}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="mt-1.5"
-          />
-          {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <Button type="submit" className="w-full" disabled={submitting}>
-          {submitting ? "Submitting…" : "Submit Headcount"}
+          {submitting ? "Submitting…" : "Submit All Headcounts"}
         </Button>
 
         {success && (
           <div className="flex items-center gap-2 rounded-md bg-capacity-low-bg p-3 text-sm font-medium text-capacity-low">
             <CheckCircle className="h-4 w-4" />
-            {floor.name} headcount updated!
+            All headcounts updated!
           </div>
         )}
       </form>
