@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GymProvider } from "@/context/GymContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { PassProvider } from "@/context/PassContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Header from "@/components/Header";
 import Home from "./pages/Home";
