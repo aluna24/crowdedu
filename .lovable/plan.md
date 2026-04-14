@@ -1,40 +1,35 @@
 
 
-## Problem
+# Group Fitness Pass System (Mock Data)
 
-Two issues block headcount submissions from the Employee page:
+Since we're using mock data, the entire pass/purchase/verification system will live in React state with no database or payment integration needed.
 
-1. **`Entry_num` has no default value** — The column is `NOT NULL` with no default. The Employee form doesn't set it, so every INSERT fails with a NOT NULL constraint violation.
+## What gets built
 
-2. **RLS blocks anonymous inserts** — The INSERT policy only allows `authenticated` users, but the app uses mock authentication (not real Supabase Auth). All requests go through with the `anon` role, which is rejected by RLS.
+### 1. Pass Context (`src/context/PassContext.tsx`)
+A new React context to manage mock pass state per logged-in user:
+- Stores purchased passes (type, classes remaining, expiration)
+- `purchasePass(type)` — instantly "buys" a pass (no real payment)
+- `usePass()` — decrements a class from the best available pass
+- `getActivePass()` — returns current valid pass info
+- Pass types: Single ($10), 3-Pack ($20), 5-Pack ($30), 10-Pack ($50), Semester ($70)
 
-## Plan
+### 2. Purchase UI on Group Fitness page
+- New section at the top: "Group Fitness Passes" with 5 cards showing pass options and prices
+- "Buy" button on each card (requires login — shows "Log in to purchase" if not authenticated)
+- Current pass status banner showing classes remaining or "No active pass"
 
-### 1. Add auto-increment default to `Entry_num`
+### 3. Reserve button gating
+- "Reserve" button checks for an active pass before allowing reservation
+- If no pass: button shows "Buy a Pass" and scrolls to purchase section
+- On successful reserve: decrements `classes_remaining` (except semester pass)
+- Semester pass allows unlimited reservations
 
-Create a migration to add a default value so new rows automatically get the next number:
+### 4. Wire into App
+- Wrap app with `PassProvider` in `App.tsx`
 
-```sql
--- Create a sequence starting after the current max
-CREATE SEQUENCE facility_count_entry_num_seq;
-SELECT setval('facility_count_entry_num_seq', (SELECT COALESCE(MAX("Entry_num"), 0) FROM facility_count));
-ALTER TABLE facility_count ALTER COLUMN "Entry_num" SET DEFAULT nextval('facility_count_entry_num_seq');
-```
-
-### 2. Allow anonymous inserts (temporary for MVP)
-
-Since the app uses mock auth (no real Supabase Auth), update the INSERT RLS policy to also allow the `anon` role:
-
-```sql
-DROP POLICY "Allow authenticated insert" ON facility_count;
-CREATE POLICY "Allow insert access"
-ON facility_count FOR INSERT
-TO anon, authenticated
-WITH CHECK (true);
-```
-
-This is appropriate for the MVP since the Employee page is already behind mock role-based routing. When real Supabase Auth is implemented later, this can be tightened back to `authenticated` only.
-
-### Files changed
-- **1 new migration** (SQL only, no app code changes needed)
+## Files changed
+- **New**: `src/context/PassContext.tsx`
+- **Modified**: `src/pages/GroupFitness.tsx` (purchase cards, pass status, gated reservations)
+- **Modified**: `src/App.tsx` (add PassProvider)
 
