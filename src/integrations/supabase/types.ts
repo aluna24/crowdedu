@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      class_reservations: {
+        Row: {
+          class_id: string
+          id: string
+          pass_id: string
+          reserved_at: string
+          user_id: string
+        }
+        Insert: {
+          class_id: string
+          id?: string
+          pass_id: string
+          reserved_at?: string
+          user_id: string
+        }
+        Update: {
+          class_id?: string
+          id?: string
+          pass_id?: string
+          reserved_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_reservations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_reservations_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_passes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       facility_count: {
         Row: {
           "3M": number
@@ -59,12 +98,81 @@ export type Database = {
         }
         Relationships: []
       }
+      fitness_classes: {
+        Row: {
+          category: string
+          created_at: string
+          current_enrolled: number
+          day: string
+          id: string
+          instructor: string
+          location: string
+          max_spots: number
+          name: string
+          time: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          current_enrolled?: number
+          day: string
+          id?: string
+          instructor: string
+          location: string
+          max_spots: number
+          name: string
+          time: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          current_enrolled?: number
+          day?: string
+          id?: string
+          instructor?: string
+          location?: string
+          max_spots?: number
+          name?: string
+          time?: string
+        }
+        Relationships: []
+      }
+      fitness_passes: {
+        Row: {
+          classes_remaining: number | null
+          id: string
+          pass_type: string
+          purchased_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          classes_remaining?: number | null
+          id?: string
+          pass_type: string
+          purchased_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          classes_remaining?: number | null
+          id?: string
+          pass_type?: string
+          purchased_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reserve_class: {
+        Args: { p_class_id: string; p_pass_id: string; p_user_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
