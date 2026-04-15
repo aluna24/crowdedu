@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, MapPin, User, ShoppingCart, Ticket } from "lucide-react";
+import { CheckCircle, Clock, MapPin, User, ShoppingCart, Ticket, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { usePass_context, PASS_OPTIONS } from "@/context/PassContext";
+import { usePassContext, PASS_OPTIONS } from "@/context/PassContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FitnessClass {
   id: string;
@@ -14,51 +15,102 @@ interface FitnessClass {
   day: string;
   time: string;
   location: string;
-  spots: number;
-  maxSpots: number;
+  current_enrolled: number;
+  max_spots: number;
   category: string;
 }
-
-const mockClasses: FitnessClass[] = [
-  { id: "1", name: "Power Yoga", instructor: "Sarah M.", day: "Monday", time: "6:00 AM", location: "3rd Floor Studio", spots: 18, maxSpots: 25, category: "Yoga" },
-  { id: "2", name: "Spin Cycle", instructor: "Chris D.", day: "Monday", time: "12:00 PM", location: "P3 Cycling Room", spots: 5, maxSpots: 20, category: "Cardio" },
-  { id: "3", name: "HIIT Express", instructor: "Jordan K.", day: "Tuesday", time: "5:30 PM", location: "Fitness Center", spots: 12, maxSpots: 30, category: "HIIT" },
-  { id: "4", name: "Pilates Core", instructor: "Mia L.", day: "Wednesday", time: "7:00 AM", location: "3rd Floor Studio", spots: 20, maxSpots: 20, category: "Pilates" },
-  { id: "5", name: "Aqua Fit", instructor: "Pat R.", day: "Wednesday", time: "10:00 AM", location: "Pool", spots: 10, maxSpots: 15, category: "Aqua" },
-  { id: "6", name: "Zumba", instructor: "Alex T.", day: "Thursday", time: "6:00 PM", location: "3M", spots: 22, maxSpots: 35, category: "Dance" },
-  { id: "7", name: "Barbell Strength", instructor: "Sam W.", day: "Friday", time: "4:00 PM", location: "Fitness Center", spots: 8, maxSpots: 15, category: "Strength" },
-];
 
 const days = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 const GroupFitness = () => {
   const [filter, setFilter] = useState("All");
-  const [reserved, setReserved] = useState<Set<string>>(new Set());
-  const { isAuthenticated } = useAuth();
-  const { purchasePass, usePass: consumePass, getActivePass } = usePass_context();
+  const [classes, setClasses] = useState<FitnessClass[]>([]);
+  const [reservedClassIds, setReservedClassIds] = useState<Set<string>>(new Set());
+  const [reserving, setReserving] = useState<string | null>(null);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const { user, isAuthenticated } = useAuth();
+  const { purchasePass, getActivePass, refreshPasses } = usePassContext();
   const { toast } = useToast();
   const passesRef = useRef<HTMLDivElement>(null);
 
-  const filtered = filter === "All" ? mockClasses : mockClasses.filter((c) => c.day === filter);
   const activePass = getActivePass();
 
-  const handlePurchase = (type: typeof PASS_OPTIONS[number]["type"]) => {
+  // Fetch classes from DB
+  useEffect(() => {
+    const fetchClasses = async () => {
+      setLoadingClasses(true);
+      const { data } = await supabase.from("fitness_classes").select("*");
+      setClasses(data ?? []);
+      setLoadingClasses(false);
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch user's existing reservations
+  useEffect(() => {
+    if (!user) { setReservedClassIds(new Set()); return; }
+    const fetchReservations = async () => {
+      const { data } = await supabase
+        .from("class_reservations")
+        .select("class_id")
+        .eq("user_id", user.id);
+      setReservedClassIds(new Set((data ?? []).map((r) => r.class_id)));
+    };
+    fetchReservations();
+  }, [user]);
+
+  const filtered = filter === "All" ? classes : classes.filter((c) => c.day === filter);
+
+  const handlePurchase = async (type: typeof PASS_OPTIONS[number]["type"]) => {
     const option = PASS_OPTIONS.find((o) => o.type === type)!;
-    purchasePass(type);
+    await purchasePass(type);
     toast({ title: "Pass Purchased!", description: `You bought a ${option.label} for $${option.price}.` });
   };
 
-  const handleReserve = (id: string) => {
+  const handleReserve = async (classId: string) => {
     if (!activePass) {
       passesRef.current?.scrollIntoView({ behavior: "smooth" });
       toast({ title: "Pass Required", description: "You need a group fitness pass to reserve a class.", variant: "destructive" });
       return;
     }
-    const ok = consumePass();
-    if (ok) {
-      setReserved((prev) => new Set(prev).add(id));
-      toast({ title: "Spot Reserved!", description: activePass.classesRemaining !== null ? `${(activePass.classesRemaining ?? 1) - 1} classes remaining on your pass.` : "Semester pass — unlimited classes." });
+    if (!user) return;
+
+    setReserving(classId);
+    const { data, error } = await supabase.rpc("reserve_class", {
+      p_user_id: user.id,
+      p_class_id: classId,
+      p_pass_id: activePass.id,
+    });
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setReserving(null);
+      return;
     }
+
+    const result = data as { success: boolean; error?: string; reservation_id?: string };
+
+    if (!result.success) {
+      toast({ title: "Reservation Failed", description: result.error ?? "Unknown error", variant: "destructive" });
+      setReserving(null);
+      return;
+    }
+
+    // Refresh data
+    setReservedClassIds((prev) => new Set(prev).add(classId));
+    setClasses((prev) =>
+      prev.map((c) => c.id === classId ? { ...c, current_enrolled: c.current_enrolled + 1 } : c)
+    );
+    await refreshPasses();
+    setReserving(null);
+
+    const updatedPass = getActivePass();
+    toast({
+      title: "Spot Reserved!",
+      description: updatedPass?.classesRemaining !== null
+        ? `${updatedPass?.classesRemaining ?? 0} classes remaining on your pass.`
+        : "Semester pass — unlimited classes.",
+    });
   };
 
   return (
@@ -124,10 +176,12 @@ const GroupFitness = () => {
       </div>
 
       <div className="mt-6 space-y-3">
-        {filtered.length === 0 && <p className="text-sm text-muted-foreground">No classes scheduled for this day.</p>}
+        {loadingClasses && <p className="text-sm text-muted-foreground">Loading classes...</p>}
+        {!loadingClasses && filtered.length === 0 && <p className="text-sm text-muted-foreground">No classes scheduled for this day.</p>}
         {filtered.map((cls) => {
-          const full = cls.spots >= cls.maxSpots;
-          const isReserved = reserved.has(cls.id);
+          const full = cls.current_enrolled >= cls.max_spots;
+          const isReserved = reservedClassIds.has(cls.id);
+          const isReserving = reserving === cls.id;
           return (
             <Card key={cls.id}>
               <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -144,7 +198,7 @@ const GroupFitness = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-sm font-medium ${full ? "text-destructive" : "text-muted-foreground"}`}>
-                    {cls.spots}/{cls.maxSpots} spots
+                    {cls.current_enrolled}/{cls.max_spots} enrolled
                   </span>
                   {isReserved ? (
                     <Button size="sm" variant="outline" disabled className="gap-1.5">
@@ -157,8 +211,8 @@ const GroupFitness = () => {
                       Buy a Pass
                     </Button>
                   ) : (
-                    <Button size="sm" disabled={full} onClick={() => handleReserve(cls.id)}>
-                      {full ? "Full" : "Reserve"}
+                    <Button size="sm" disabled={full || isReserving} onClick={() => handleReserve(cls.id)}>
+                      {isReserving ? <Loader2 className="h-4 w-4 animate-spin" /> : full ? "Full" : "Reserve"}
                     </Button>
                   )}
                 </div>
