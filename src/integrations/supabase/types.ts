@@ -169,6 +169,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_reservation: {
+        Args: { p_reservation_id: string; p_user_id: string }
+        Returns: Json
+      }
       reserve_class: {
         Args: { p_class_id: string; p_pass_id: string; p_user_id: string }
         Returns: Json
