@@ -20,7 +20,7 @@ interface FitnessClass {
   category: string;
 }
 
-const days = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const days = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const GroupFitness = () => {
   const [filter, setFilter] = useState("All");
@@ -117,6 +117,7 @@ const GroupFitness = () => {
     <div className="container py-6">
       <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">Group Fitness</h1>
       <p className="mt-1 text-sm text-muted-foreground">Browse the weekly schedule and reserve your spot.</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">Spring 2026 schedule: January 19 – May 8</p>
 
       {/* Pass purchase section */}
       <div ref={passesRef} className="mt-6">
