@@ -1,32 +1,44 @@
 
-The user wants a full semester schedule of group fitness classes seeded into the `fitness_classes` table, spanning the third week of January 2026 through the first week of May 2026, with ≥5 weekday classes/day and ≥3 weekend classes/day.
+The user wants two new capabilities on the Group Fitness page:
+1. **Cancel a reservation** — refund the class to the pass and decrement enrollment
+2. **Calendar/weekly browsing** — pick a date from a month-view calendar; schedule shows that day's classes
 
-Looking at the current schema: `fitness_classes` has `day` (text like "Monday") and `time` (text) — no actual date column. The current UI filters by day-of-week ("Monday"–"Friday"). So a recurring weekly template fits the schema naturally — each row represents a recurring weekly class slot, not a single dated occurrence.
+Current schema stores classes as recurring weekly slots (`day` = "Monday"), no dates. So selecting a date = filter classes by that date's weekday. Semester runs Jan 19 – May 8, 2026, so dates outside that range should be disabled in the calendar.
 
-I'll seed a recurring weekly template (Mon–Sun) with the right counts. The "schedule runs Jan 19 – May 8" framing will be communicated via UI copy (a date range note on the Group Fitness page). The `days` filter array also needs Saturday/Sunday added.
+Cancellation needs an atomic backend op (mirror of `reserve_class`): lock pass + class, delete reservation, decrement `current_enrolled`, increment `classes_remaining` (or reactivate if exhausted), skip refund for semester passes. Need a new `cancel_reservation` RPC + DELETE RLS policy on `class_reservations` + UPDATE policy on `fitness_classes` (currently locked down — RPC runs SECURITY DEFINER so it bypasses RLS, so actually no policy change needed for the table itself, but the RPC must exist).
 
-# Plan: Seed semester group fitness schedule
+# Plan: Cancel reservations + calendar-based browsing
 
-## Schema fit
-The `fitness_classes` table stores recurring weekly slots (`day` = weekday name, `time` = time string). I'll seed one row per recurring class slot. The semester date range (Jan 19 – May 8, 2026) is shown as page copy, not per-row dates.
-
-## 1. Database migration — seed classes
-Clear existing seeded classes, then insert a recurring weekly schedule:
-
-**Weekdays (5 classes each, Mon–Fri = 25 classes):**
-- 6:30 AM Sunrise Yoga, 12:00 PM HIIT, 4:30 PM Cycle, 5:30 PM Strength, 7:00 PM Pilates / Zumba / Bootcamp / Barre / Core (varies by day)
-
-**Weekends (3 classes each, Sat–Sun = 6 classes):**
-- 9:00 AM Yoga Flow, 10:30 AM Cycle, 12:00 PM Total Body / Dance Fitness
-
-Each row gets: name, instructor, day, time, location (Multipurpose Room / 3M / Fitness Center), max_spots (15–25), category (Yoga, Cardio, Strength, Dance, Mind-Body), current_enrolled = 0.
-
-Total: ~31 recurring class slots.
+## 1. Backend — `cancel_reservation` RPC (migration)
+New PL/pgSQL function `cancel_reservation(p_user_id text, p_reservation_id uuid)`:
+- Lock reservation row, verify it belongs to the user
+- Lock the linked class and pass rows
+- Decrement `fitness_classes.current_enrolled`
+- If pass `classes_remaining` is not null: increment by 1, set status back to `active`
+- Delete the reservation
+- Return `{ success, error? }`
+- `SECURITY DEFINER` so it bypasses RLS like `reserve_class` does
 
 ## 2. Frontend — `src/pages/GroupFitness.tsx`
-- Add Saturday + Sunday to the `days` filter array
-- Add a small note under the page header: "Spring 2026 schedule: January 19 – May 8"
 
-## Files
-- New migration: seed `fitness_classes`
-- Modified: `src/pages/GroupFitness.tsx` (filter array + date note)
+**Calendar picker (month view)**
+- Add a shadcn `Calendar` (Popover-triggered button showing selected date) at the top of the schedule section
+- Default selection: today (clamped to the Jan 19 – May 8, 2026 range; falls back to Jan 19 if outside)
+- Disable dates outside the semester range
+- Selecting a date sets the day filter to that date's weekday and shows that day's classes
+- Keep the existing day-of-week pill buttons as a quick filter; selecting a pill clears the specific date and shows all classes for that weekday across the semester
+- Add a small header above the class list: "Classes for Monday, Feb 2" when a specific date is picked, or "All [Day] classes" when using the pill filter
+
+**Cancel button on reserved classes**
+- For classes the user has reserved, replace the disabled "Reserved" badge with a "Reserved ✓" label + a small "Cancel" button (outline/destructive)
+- Click → confirm via `AlertDialog` → call `cancel_reservation` RPC
+- On success: remove from `reservedClassIds`, decrement local `current_enrolled`, refresh passes, toast confirmation
+
+## 3. Files
+- **New migration**: `cancel_reservation` function
+- **Modified**: `src/pages/GroupFitness.tsx` — add Calendar popover, date-aware filtering, Cancel button + confirm dialog, wire `cancel_reservation` RPC
+
+## Notes
+- No schema changes — only a new function
+- Calendar uses existing `@/components/ui/calendar` + `popover` + `alert-dialog` shadcn components (all present)
+- Semester window enforced both in calendar `disabled` prop and as a constant at the top of the file
