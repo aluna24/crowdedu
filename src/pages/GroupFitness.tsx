@@ -1,12 +1,27 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, MapPin, User, ShoppingCart, Ticket, Loader2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { CheckCircle, Clock, MapPin, User, ShoppingCart, Ticket, Loader2, CalendarIcon, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { usePassContext, PASS_OPTIONS } from "@/context/PassContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface FitnessClass {
   id: string;
@@ -21,12 +36,24 @@ interface FitnessClass {
 }
 
 const days = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const SEMESTER_START = new Date(2026, 0, 19); // Jan 19, 2026
+const SEMESTER_END = new Date(2026, 4, 8);    // May 8, 2026
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+const clampToSemester = (d: Date) => {
+  if (d < SEMESTER_START) return SEMESTER_START;
+  if (d > SEMESTER_END) return SEMESTER_START;
+  return d;
+};
 
 const GroupFitness = () => {
   const [filter, setFilter] = useState("All");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => clampToSemester(new Date()));
   const [classes, setClasses] = useState<FitnessClass[]>([]);
-  const [reservedClassIds, setReservedClassIds] = useState<Set<string>>(new Set());
+  // Map classId -> reservationId for the current user
+  const [reservations, setReservations] = useState<Map<string, string>>(new Map());
   const [reserving, setReserving] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const { user, isAuthenticated } = useAuth();
   const { purchasePass, getActivePass, refreshPasses } = usePassContext();
@@ -35,7 +62,6 @@ const GroupFitness = () => {
 
   const activePass = getActivePass();
 
-  // Fetch classes from DB
   useEffect(() => {
     const fetchClasses = async () => {
       setLoadingClasses(true);
@@ -46,20 +72,34 @@ const GroupFitness = () => {
     fetchClasses();
   }, []);
 
-  // Fetch user's existing reservations
   useEffect(() => {
-    if (!user) { setReservedClassIds(new Set()); return; }
+    if (!user) { setReservations(new Map()); return; }
     const fetchReservations = async () => {
       const { data } = await supabase
         .from("class_reservations")
-        .select("class_id")
+        .select("id, class_id")
         .eq("user_id", user.id);
-      setReservedClassIds(new Set((data ?? []).map((r) => r.class_id)));
+      const m = new Map<string, string>();
+      (data ?? []).forEach((r) => m.set(r.class_id, r.id));
+      setReservations(m);
     };
     fetchReservations();
   }, [user]);
 
-  const filtered = filter === "All" ? classes : classes.filter((c) => c.day === filter);
+  // Effective day filter — date selection takes precedence when filter is "All"
+  const effectiveDay = useMemo(() => {
+    if (filter !== "All") return filter;
+    if (selectedDate) return WEEKDAY_NAMES[selectedDate.getDay()];
+    return "All";
+  }, [filter, selectedDate]);
+
+  const filtered = effectiveDay === "All" ? classes : classes.filter((c) => c.day === effectiveDay);
+
+  const headerLabel = useMemo(() => {
+    if (filter === "All" && selectedDate) return `Classes for ${format(selectedDate, "EEEE, MMM d")}`;
+    if (filter !== "All") return `All ${filter} classes`;
+    return "All classes";
+  }, [filter, selectedDate]);
 
   const handlePurchase = async (type: typeof PASS_OPTIONS[number]["type"]) => {
     const option = PASS_OPTIONS.find((o) => o.type === type)!;
@@ -96,8 +136,11 @@ const GroupFitness = () => {
       return;
     }
 
-    // Refresh data
-    setReservedClassIds((prev) => new Set(prev).add(classId));
+    setReservations((prev) => {
+      const next = new Map(prev);
+      if (result.reservation_id) next.set(classId, result.reservation_id);
+      return next;
+    });
     setClasses((prev) =>
       prev.map((c) => c.id === classId ? { ...c, current_enrolled: c.current_enrolled + 1 } : c)
     );
@@ -111,6 +154,43 @@ const GroupFitness = () => {
         ? `${updatedPass?.classesRemaining ?? 0} classes remaining on your pass.`
         : "Semester pass — unlimited classes.",
     });
+  };
+
+  const handleCancel = async (classId: string) => {
+    if (!user) return;
+    const reservationId = reservations.get(classId);
+    if (!reservationId) return;
+
+    setCancelling(classId);
+    const { data, error } = await supabase.rpc("cancel_reservation", {
+      p_user_id: user.id,
+      p_reservation_id: reservationId,
+    });
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setCancelling(null);
+      return;
+    }
+
+    const result = data as { success: boolean; error?: string };
+    if (!result.success) {
+      toast({ title: "Cancellation Failed", description: result.error ?? "Unknown error", variant: "destructive" });
+      setCancelling(null);
+      return;
+    }
+
+    setReservations((prev) => {
+      const next = new Map(prev);
+      next.delete(classId);
+      return next;
+    });
+    setClasses((prev) =>
+      prev.map((c) => c.id === classId ? { ...c, current_enrolled: Math.max(c.current_enrolled - 1, 0) } : c)
+    );
+    await refreshPasses();
+    setCancelling(null);
+    toast({ title: "Reservation Cancelled", description: "Your class credit has been refunded." });
   };
 
   return (
@@ -150,7 +230,6 @@ const GroupFitness = () => {
         </div>
       </div>
 
-      {/* Active pass status */}
       {isAuthenticated && (
         <div className="mt-4 rounded-md border border-border bg-secondary/50 p-3">
           {activePass ? (
@@ -167,22 +246,60 @@ const GroupFitness = () => {
         </div>
       )}
 
-      {/* Day filter */}
-      <div className="mt-6 flex flex-wrap gap-2">
-        {days.map((d) => (
-          <Button key={d} variant={filter === d ? "default" : "outline"} size="sm" onClick={() => setFilter(d)}>
-            {d}
-          </Button>
-        ))}
+      {/* Calendar + day filter */}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {days.map((d) => (
+            <Button
+              key={d}
+              variant={filter === d ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter(d)}
+            >
+              {d}
+            </Button>
+          ))}
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn("justify-start gap-2", !selectedDate && "text-muted-foreground")}
+            >
+              <CalendarIcon className="h-4 w-4" />
+              {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => {
+                setSelectedDate(d);
+                if (d) setFilter("All");
+              }}
+              defaultMonth={selectedDate ?? SEMESTER_START}
+              disabled={(date) => date < SEMESTER_START || date > SEMESTER_END}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-4 flex items-center justify-between">
+        <h3 className="font-display text-base font-semibold text-foreground">{headerLabel}</h3>
+      </div>
+
+      <div className="mt-3 space-y-3">
         {loadingClasses && <p className="text-sm text-muted-foreground">Loading classes...</p>}
-        {!loadingClasses && filtered.length === 0 && <p className="text-sm text-muted-foreground">No classes scheduled for this day.</p>}
+        {!loadingClasses && filtered.length === 0 && <p className="text-sm text-muted-foreground">No classes scheduled.</p>}
         {filtered.map((cls) => {
           const full = cls.current_enrolled >= cls.max_spots;
-          const isReserved = reservedClassIds.has(cls.id);
+          const isReserved = reservations.has(cls.id);
           const isReserving = reserving === cls.id;
+          const isCancelling = cancelling === cls.id;
           return (
             <Card key={cls.id}>
               <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -202,9 +319,34 @@ const GroupFitness = () => {
                     {cls.current_enrolled}/{cls.max_spots} enrolled
                   </span>
                   {isReserved ? (
-                    <Button size="sm" variant="outline" disabled className="gap-1.5">
-                      <CheckCircle className="h-4 w-4 text-capacity-low" /> Reserved
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1 text-sm font-medium text-capacity-low">
+                        <CheckCircle className="h-4 w-4" /> Reserved
+                      </span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="gap-1.5" disabled={isCancelling}>
+                            {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                            Cancel
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel reservation?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              You'll lose your spot in {cls.name} ({cls.day} · {cls.time}).
+                              {activePass?.classesRemaining !== null && " Your class credit will be refunded to your pass."}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleCancel(cls.id)}>
+                              Yes, Cancel
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   ) : !isAuthenticated ? (
                     <Button size="sm" variant="outline" disabled>Log in</Button>
                   ) : !activePass ? (
