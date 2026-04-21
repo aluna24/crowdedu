@@ -53,6 +53,54 @@ export type Database = {
           },
         ]
       }
+      equipment_tickets: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          employee_name: string
+          equipment_name: string
+          equipment_number: string
+          id: string
+          note: string | null
+          report_date: string
+          reported_status: string
+          resolution_status: string | null
+          review_status: string
+          submitted_by_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          employee_name: string
+          equipment_name: string
+          equipment_number: string
+          id?: string
+          note?: string | null
+          report_date: string
+          reported_status: string
+          resolution_status?: string | null
+          review_status?: string
+          submitted_by_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          employee_name?: string
+          equipment_name?: string
+          equipment_number?: string
+          id?: string
+          note?: string | null
+          report_date?: string
+          reported_status?: string
+          resolution_status?: string | null
+          review_status?: string
+          submitted_by_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       facility_count: {
         Row: {
           "3M": number

@@ -37,7 +37,7 @@ const Login = () => {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
             <Activity className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Welcome to RecTrack</CardTitle>
+          <CardTitle className="text-2xl">Welcome to CrowdEDU</CardTitle>
           <CardDescription>Sign in to access all features</CardDescription>
         </CardHeader>
         <CardContent>
