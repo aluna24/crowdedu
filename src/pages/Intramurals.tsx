@@ -153,6 +153,7 @@ const Intramurals = () => {
     const cleanedMembers = members.map((m) => ({ name: m.name.trim(), email: m.email.trim() })).filter((m) => m.name || m.email);
     const parsed = teamSchema.safeParse({
       teamName: teamName.trim(),
+      division,
       captainName: captainName.trim(),
       captainEmail: captainEmail.trim(),
       members: cleanedMembers,
