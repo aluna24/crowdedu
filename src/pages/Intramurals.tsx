@@ -179,7 +179,7 @@ const Intramurals = () => {
       .from("intramural_teams")
       .insert({
         sport_id: selectedSport,
-        team_name: parsed.data.teamName,
+        team_name: `[${parsed.data.division}] ${parsed.data.teamName}`,
         captain_user_id: user.id,
         captain_name: parsed.data.captainName,
         captain_email: parsed.data.captainEmail,
