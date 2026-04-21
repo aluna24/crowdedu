@@ -14,6 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+interface SportSchedule {
+  division: "Men's" | "Women's" | "Co-ed";
+  day: string;
+  time: string;
+}
+
 interface Sport {
   id: string;
   name: string;
@@ -22,14 +28,31 @@ interface Sport {
   teamsRegistered: number;
   maxTeams: number;
   type: "league" | "tournament";
+  schedules: SportSchedule[];
 }
 
 const mockSports: Sport[] = [
-  { id: "bb", name: "Basketball (5v5)", season: "Spring 2026", registrationDeadline: "Apr 1", teamsRegistered: 8, maxTeams: 12, type: "league" },
-  { id: "vb", name: "Volleyball (6v6)", season: "Spring 2026", registrationDeadline: "Apr 5", teamsRegistered: 6, maxTeams: 8, type: "league" },
-  { id: "sc", name: "Indoor Soccer", season: "Spring 2026", registrationDeadline: "Apr 10", teamsRegistered: 10, maxTeams: 16, type: "league" },
-  { id: "bd", name: "Badminton Doubles", season: "Spring 2026", registrationDeadline: "Mar 28", teamsRegistered: 12, maxTeams: 12, type: "tournament" },
-  { id: "dg", name: "Dodgeball", season: "Spring 2026", registrationDeadline: "Apr 15", teamsRegistered: 4, maxTeams: 10, type: "tournament" },
+  { id: "bb", name: "Basketball (5v5)", season: "Spring 2026", registrationDeadline: "Apr 1", teamsRegistered: 8, maxTeams: 12, type: "league", schedules: [
+    { division: "Men's", day: "Monday", time: "7:00–9:00 PM" },
+    { division: "Women's", day: "Wednesday", time: "7:00–9:00 PM" },
+    { division: "Co-ed", day: "Sunday", time: "5:00–7:00 PM" },
+  ]},
+  { id: "vb", name: "Volleyball (6v6)", season: "Spring 2026", registrationDeadline: "Apr 5", teamsRegistered: 6, maxTeams: 8, type: "league", schedules: [
+    { division: "Men's", day: "Tuesday", time: "8:00–10:00 PM" },
+    { division: "Women's", day: "Thursday", time: "8:00–10:00 PM" },
+    { division: "Co-ed", day: "Friday", time: "6:00–8:00 PM" },
+  ]},
+  { id: "sc", name: "Indoor Soccer", season: "Spring 2026", registrationDeadline: "Apr 10", teamsRegistered: 10, maxTeams: 16, type: "league", schedules: [
+    { division: "Men's", day: "Wednesday", time: "9:00–11:00 PM" },
+    { division: "Women's", day: "Monday", time: "9:00–11:00 PM" },
+    { division: "Co-ed", day: "Saturday", time: "2:00–4:00 PM" },
+  ]},
+  { id: "bd", name: "Badminton Doubles", season: "Spring 2026", registrationDeadline: "Mar 28", teamsRegistered: 12, maxTeams: 12, type: "tournament", schedules: [
+    { division: "Co-ed", day: "Saturday", time: "10:00 AM–2:00 PM" },
+  ]},
+  { id: "dg", name: "Dodgeball", season: "Spring 2026", registrationDeadline: "Apr 15", teamsRegistered: 4, maxTeams: 10, type: "tournament", schedules: [
+    { division: "Co-ed", day: "Sunday", time: "1:00–4:00 PM" },
+  ]},
 ];
 
 interface Member {
