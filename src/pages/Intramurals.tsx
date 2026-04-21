@@ -50,8 +50,12 @@ const memberSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
 });
 
+const DIVISIONS = ["Men's", "Women's", "Co-ed"] as const;
+type Division = typeof DIVISIONS[number];
+
 const teamSchema = z.object({
   teamName: z.string().trim().min(1, "Team name required").max(100),
+  division: z.enum(DIVISIONS, { errorMap: () => ({ message: "Select a league division" }) }),
   captainName: z.string().trim().min(1, "Captain name required").max(100),
   captainEmail: z.string().trim().email("Invalid email").max(255),
   members: z.array(memberSchema).min(1, "Add at least one member"),
