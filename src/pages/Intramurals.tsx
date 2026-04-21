@@ -434,89 +434,154 @@ const Intramurals = () => {
           <DialogHeader>
             <DialogTitle>{leagueSport?.name}</DialogTitle>
           </DialogHeader>
-          {leagueSport && (
-            <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-md border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">Season</p>
-                  <p className="font-medium text-foreground">{leagueSport.season}</p>
+          {leagueSport && (() => {
+            const allDays = Array.from(new Set(leagueSport.schedules.map((s) => s.day)));
+            const visibleSchedules = leagueSport.schedules.filter(
+              (s) =>
+                (leagueDivisionFilter === "all" || s.division === leagueDivisionFilter) &&
+                (leagueDayFilter === "all" || s.day === leagueDayFilter)
+            );
+            const filteredTeams = leagueTeams.filter((t) => {
+              const { division } = parseTeamName(t.team_name);
+              if (leagueDivisionFilter !== "all" && division !== leagueDivisionFilter) return false;
+              if (leagueDayFilter !== "all") {
+                const sched = leagueSport.schedules.find(
+                  (s) => s.division === division && s.day === leagueDayFilter
+                );
+                if (!sched) return false;
+              }
+              return true;
+            });
+            return (
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-md border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Season</p>
+                    <p className="font-medium text-foreground">{leagueSport.season}</p>
+                  </div>
+                  <div className="rounded-md border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Format</p>
+                    <p className="font-medium text-foreground capitalize">{leagueSport.type}</p>
+                  </div>
+                  <div className="rounded-md border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Registration deadline</p>
+                    <p className="font-medium text-foreground">{leagueSport.registrationDeadline}</p>
+                  </div>
+                  <div className="rounded-md border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Capacity</p>
+                    <p className="font-medium text-foreground">{leagueSport.teamsRegistered}/{leagueSport.maxTeams} teams</p>
+                  </div>
                 </div>
-                <div className="rounded-md border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">Format</p>
-                  <p className="font-medium text-foreground capitalize">{leagueSport.type}</p>
-                </div>
-                <div className="rounded-md border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">Registration deadline</p>
-                  <p className="font-medium text-foreground">{leagueSport.registrationDeadline}</p>
-                </div>
-                <div className="rounded-md border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">Capacity</p>
-                  <p className="font-medium text-foreground">{leagueSport.teamsRegistered}/{leagueSport.maxTeams} teams</p>
-                </div>
-              </div>
 
-              <div>
-                <h3 className="font-display text-sm font-semibold text-foreground">Registered teams ({leagueTeams.length})</h3>
-                <p className="text-xs text-muted-foreground">Click a team to view its roster.</p>
-                <div className="mt-2 space-y-2">
-                  {leagueLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Loading teams…
-                    </div>
-                  ) : leagueTeams.length === 0 ? (
-                    <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">No teams registered yet. Be the first!</p>
-                  ) : (
-                    leagueTeams.map((t) => {
-                      const accepted = t.intramural_team_members.filter((m) => m.status === "accepted").length;
-                      const pending = t.intramural_team_members.filter((m) => m.status === "pending").length;
-                      const declined = t.intramural_team_members.filter((m) => m.status === "declined").length;
-                      const open = expandedTeamId === t.id;
-                      return (
-                        <Collapsible key={t.id} open={open} onOpenChange={(o) => setExpandedTeamId(o ? t.id : null)}>
-                          <div className="rounded-md border bg-card">
-                            <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/40 transition-colors">
-                              <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate">{t.team_name}</p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  Captain: {t.captain_name} · {t.intramural_team_members.length} member{t.intramural_team_members.length === 1 ? "" : "s"}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <Badge variant="secondary" className="text-xs">{accepted} ✓</Badge>
-                                {pending > 0 && <Badge variant="outline" className="text-xs">{pending} pending</Badge>}
-                                <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <div className="border-t p-3 space-y-1.5">
-                                {t.intramural_team_members.length === 0 ? (
-                                  <p className="text-sm text-muted-foreground">No members yet.</p>
-                                ) : (
-                                  t.intramural_team_members.map((mem) => (
-                                    <div key={mem.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-1.5">
-                                      <p className="text-sm text-foreground truncate">{mem.member_name}</p>
-                                      <Badge variant={statusBadgeVariant(mem.status)} className="capitalize text-xs shrink-0">
-                                        {mem.status}
-                                      </Badge>
-                                    </div>
-                                  ))
-                                )}
-                                {(accepted + pending + declined) > 0 && (
-                                  <p className="pt-1 text-xs text-muted-foreground">
-                                    {accepted} accepted · {pending} pending · {declined} declined
-                                  </p>
-                                )}
-                              </div>
-                            </CollapsibleContent>
+                <div>
+                  <h3 className="font-display text-sm font-semibold text-foreground">Schedule</h3>
+                  <div className="mt-2 space-y-1.5">
+                    {visibleSchedules.length === 0 ? (
+                      <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">No matches for this filter.</p>
+                    ) : (
+                      visibleSchedules.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-sm">
+                          <Badge variant="outline" className="text-xs">{s.division}</Badge>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{s.day}</span>
+                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{s.time}</span>
                           </div>
-                        </Collapsible>
-                      );
-                    })
-                  )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Filter by league</Label>
+                    <Select value={leagueDivisionFilter} onValueChange={(v) => setLeagueDivisionFilter(v as "all" | Division)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All leagues</SelectItem>
+                        {DIVISIONS.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Filter by day</Label>
+                    <Select value={leagueDayFilter} onValueChange={setLeagueDayFilter}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All days</SelectItem>
+                        {allDays.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-display text-sm font-semibold text-foreground">Registered teams ({filteredTeams.length})</h3>
+                  <p className="text-xs text-muted-foreground">Click a team to view its roster.</p>
+                  <div className="mt-2 space-y-2">
+                    {leagueLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading teams…
+                      </div>
+                    ) : filteredTeams.length === 0 ? (
+                      <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">No teams match these filters.</p>
+                    ) : (
+                      filteredTeams.map((t) => {
+                        const accepted = t.intramural_team_members.filter((m) => m.status === "accepted").length;
+                        const pending = t.intramural_team_members.filter((m) => m.status === "pending").length;
+                        const declined = t.intramural_team_members.filter((m) => m.status === "declined").length;
+                        const open = expandedTeamId === t.id;
+                        const { division: tDiv, name: tName } = parseTeamName(t.team_name);
+                        return (
+                          <Collapsible key={t.id} open={open} onOpenChange={(o) => setExpandedTeamId(o ? t.id : null)}>
+                            <div className="rounded-md border bg-card">
+                              <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/40 transition-colors">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    {tDiv && <Badge variant="outline" className="text-xs shrink-0">{tDiv}</Badge>}
+                                    <p className="font-medium text-foreground truncate">{tName}</p>
+                                  </div>
+                                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                                    Captain: {t.captain_name} · {t.intramural_team_members.length} member{t.intramural_team_members.length === 1 ? "" : "s"}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge variant="secondary" className="text-xs">{accepted} ✓</Badge>
+                                  {pending > 0 && <Badge variant="outline" className="text-xs">{pending} pending</Badge>}
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t p-3 space-y-1.5">
+                                  {t.intramural_team_members.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No members yet.</p>
+                                  ) : (
+                                    t.intramural_team_members.map((mem) => (
+                                      <div key={mem.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-1.5">
+                                        <p className="text-sm text-foreground truncate">{mem.member_name}</p>
+                                        <Badge variant={statusBadgeVariant(mem.status)} className="capitalize text-xs shrink-0">
+                                          {mem.status}
+                                        </Badge>
+                                      </div>
+                                    ))
+                                  )}
+                                  {(accepted + pending + declined) > 0 && (
+                                    <p className="pt-1 text-xs text-muted-foreground">
+                                      {accepted} accepted · {pending} pending · {declined} declined
+                                    </p>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
