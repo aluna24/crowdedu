@@ -117,6 +117,7 @@ const Intramurals = () => {
     }
     setSelectedSport(sportId);
     setTeamName("");
+    setDivision("Co-ed");
     setMembers([emptyMember()]);
     setDialogOpen(true);
   };
