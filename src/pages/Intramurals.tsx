@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Users, Calendar, Trophy, Plus, CheckCircle, Trash2, LogIn, Mail, Loader2, Eye, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,8 +50,12 @@ const memberSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
 });
 
+const DIVISIONS = ["Men's", "Women's", "Co-ed"] as const;
+type Division = typeof DIVISIONS[number];
+
 const teamSchema = z.object({
   teamName: z.string().trim().min(1, "Team name required").max(100),
+  division: z.enum(DIVISIONS, { errorMap: () => ({ message: "Select a league division" }) }),
   captainName: z.string().trim().min(1, "Captain name required").max(100),
   captainEmail: z.string().trim().email("Invalid email").max(255),
   members: z.array(memberSchema).min(1, "Add at least one member"),
@@ -70,6 +75,7 @@ const Intramurals = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [teamName, setTeamName] = useState("");
+  const [division, setDivision] = useState<Division>("Co-ed");
   const [captainName, setCaptainName] = useState(user?.name ?? "");
   const [captainEmail, setCaptainEmail] = useState(user?.email ?? "");
   const [members, setMembers] = useState<Member[]>([emptyMember()]);
@@ -111,6 +117,7 @@ const Intramurals = () => {
     }
     setSelectedSport(sportId);
     setTeamName("");
+    setDivision("Co-ed");
     setMembers([emptyMember()]);
     setDialogOpen(true);
   };
@@ -146,6 +153,7 @@ const Intramurals = () => {
     const cleanedMembers = members.map((m) => ({ name: m.name.trim(), email: m.email.trim() })).filter((m) => m.name || m.email);
     const parsed = teamSchema.safeParse({
       teamName: teamName.trim(),
+      division,
       captainName: captainName.trim(),
       captainEmail: captainEmail.trim(),
       members: cleanedMembers,
@@ -171,7 +179,7 @@ const Intramurals = () => {
       .from("intramural_teams")
       .insert({
         sport_id: selectedSport,
-        team_name: parsed.data.teamName,
+        team_name: `[${parsed.data.division}] ${parsed.data.teamName}`,
         captain_user_id: user.id,
         captain_name: parsed.data.captainName,
         captain_email: parsed.data.captainEmail,
@@ -306,6 +314,25 @@ const Intramurals = () => {
             <div>
               <Label htmlFor="teamName">Team Name</Label>
               <Input id="teamName" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. The Dunkers" className="mt-1" />
+            </div>
+            <div>
+              <Label>League Division</Label>
+              <RadioGroup
+                value={division}
+                onValueChange={(v) => setDivision(v as Division)}
+                className="mt-2 grid grid-cols-3 gap-2"
+              >
+                {DIVISIONS.map((d) => (
+                  <Label
+                    key={d}
+                    htmlFor={`div-${d}`}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border bg-card p-3 text-sm font-medium hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <RadioGroupItem id={`div-${d}`} value={d} />
+                    {d}
+                  </Label>
+                ))}
+              </RadioGroup>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
