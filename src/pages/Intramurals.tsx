@@ -114,6 +114,8 @@ const Intramurals = () => {
   const [leagueTeams, setLeagueTeams] = useState<DbTeam[]>([]);
   const [leagueLoading, setLeagueLoading] = useState(false);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+  const [leagueDivisionFilter, setLeagueDivisionFilter] = useState<"all" | Division>("all");
+  const [leagueDayFilter, setLeagueDayFilter] = useState<string>("all");
 
   const fetchTeams = useCallback(async () => {
     if (!user) return;
