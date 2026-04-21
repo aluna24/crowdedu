@@ -59,10 +59,19 @@ const defaultHours = [
   { day: "Tuesday", hours: "6:00 AM – 10:00 PM" },
   { day: "Wednesday", hours: "6:00 AM – 10:00 PM" },
   { day: "Thursday", hours: "6:00 AM – 10:00 PM" },
-  { day: "Friday", hours: "6:00 AM – 8:00 PM" },
-  { day: "Saturday", hours: "8:00 AM – 6:00 PM" },
-  { day: "Sunday", hours: "10:00 AM – 6:00 PM" },
+  { day: "Friday", hours: "6:00 AM – 10:00 PM" },
+  { day: "Saturday", hours: "8:00 AM – 8:00 PM" },
+  { day: "Sunday", hours: "8:00 AM – 8:00 PM" },
 ];
+
+function parseEntryTimestamp(row: Record<string, unknown>): Date | null {
+  const dateStr = row["Date"] as string | undefined;
+  const timeStr = row["Time"] as string | undefined;
+  if (!dateStr) return null;
+  const combined = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+  const d = new Date(combined);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 function getStatus(percent: number): "Low" | "Moderate" | "High" {
   return percent < 40 ? "Low" : percent < 75 ? "Moderate" : "High";
@@ -97,7 +106,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!error && data) {
         setFloors((prev) => applyDbRow(data as Record<string, unknown>, prev));
-        setLastUpdated(new Date());
+        const ts = parseEntryTimestamp(data as Record<string, unknown>);
+        setLastUpdated(ts ?? new Date());
       }
     };
     fetchLatest();
@@ -112,7 +122,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { event: "INSERT", schema: "public", table: "facility_count" },
         (payload) => {
           setFloors((prev) => applyDbRow(payload.new as Record<string, unknown>, prev));
-          setLastUpdated(new Date());
+          const ts = parseEntryTimestamp(payload.new as Record<string, unknown>);
+          setLastUpdated(ts ?? new Date());
         }
       )
       .subscribe();

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Activity, Calendar, Users, Dumbbell, HelpCircle, Megaphone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useGym } from "@/context/GymContext";
+import OperatingHours from "@/components/OperatingHours";
 
 const features = [
   { to: "/capacity", label: "Capacity Tracker", desc: "See real-time occupancy by area", icon: Activity, color: "text-capacity-low" },
@@ -57,6 +58,11 @@ const Home = () => {
             </Card>
           </Link>
         ))}
+      </section>
+
+      {/* Operating hours */}
+      <section className="mt-10 mx-auto max-w-md">
+        <OperatingHours />
       </section>
     </div>
   );
