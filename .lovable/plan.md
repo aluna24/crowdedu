@@ -1,69 +1,71 @@
 
 
-## Intramurals — League × Time Slots, Season Schedule, My Teams on top
+## Intramurals — Filter placement, selection styling, staff management view, member notifications
 
-Keep the current layout intact. Make schedules richer (per-day, per-time slot), let users pick a specific time when registering, surface the user's teams at the top of the page, and add a season timeline (weekly play → playoffs after week 3).
+### 1. Registration dialog polish
+- **Day** and **Time slot** option pills get a clearly highlighted "selected" state: filled primary background, white text, primary border, plus a subtle ring. Hover stays subtle; selected stays bold. (Today they only get a light tint that's hard to see.)
+- League division pills get the same stronger selected styling for consistency.
 
-### 1. Per-sport league × day × time slot schedule
+### 2. League dialog — filters above schedule
+Reorder the league dialog content top‑to‑bottom:
+1. Season/format/deadline/capacity summary
+2. Season timeline strip
+3. **Filters (League / Day / Time)** ← moved up
+4. Schedule list (already filtered)
+5. Registered teams list (already filtered)
 
-Rebuild `mockSports[].schedules` so every league sport offers all three divisions, each with the requested days and per-hour time slots. Each slot is independently selectable at registration. Example shape:
+### 3. Role‑based intramural page (student vs employee/admin)
 
-```ts
-schedules: [
-  { division: "Women's", day: "Sunday",    times: ["5:00 PM", "6:00 PM"] },
-  { division: "Men's",   day: "Monday",    times: ["6:00 PM","7:00 PM","8:00 PM","9:00 PM"] },
-  { division: "Men's",   day: "Wednesday", times: ["6:00 PM","7:00 PM","8:00 PM","9:00 PM"] },
-  { division: "Men's",   day: "Thursday",  times: ["6:00 PM","7:00 PM","8:00 PM","9:00 PM"] },
-  { division: "Co-ed",   day: "Sunday",    times: ["7:00 PM"] },
-  { division: "Co-ed",   day: "Tuesday",   times: ["6:00 PM","7:00 PM","8:00 PM","9:00 PM"] },
-]
-```
+Reuse the existing `useAuth().user.role` (`student` / `employee` / `admin`).
 
-Apply to each league sport (Basketball, Volleyball, Indoor Soccer). Tournaments (Badminton, Dodgeball) keep their single co-ed slot.
+**Students** — unchanged: see "My Teams" + sport cards with **Register** + **View league**.
 
-### 2. Season timeline (weekly + playoffs)
+**Employees & admins** — same page, but a **Manage mode**:
+- The page header subtitle becomes "Manage teams, rosters, and schedules."
+- The "My Teams" section is replaced by a **Manage Teams** section listing **all** teams across all sports (loaded from `intramural_teams`), grouped by sport. Each team row shows division/day/time badges + member count.
+- Sport cards **hide** the Register button entirely. Only **View league** remains.
+- A new **Manage team** dialog opens from each team row with these controls:
+  - **Approval**: toggle a team's approval status (Pending → Approved). Approved status displayed as a badge; pending teams highlighted.
+  - **Edit slot**: change division / day / time using the same 3‑pill picker. On save, re‑encode `team_name` and notify all members (see §4).
+  - **Remove member**: trash icon next to each roster row.
+  - **Delete team**: destructive button at the bottom, removes the team and all its members.
+- The View League dialog also gets inline "Remove team" buttons when the viewer is staff.
 
-Add a `seasonStart` date per sport. Derive in code:
+**Database changes** (one migration):
+- Add `approval_status text not null default 'pending'` to `intramural_teams` (values: `pending`, `approved`).
+- Add UPDATE and DELETE RLS policies on `intramural_teams` and `intramural_team_members` (permissive, matching existing project pattern — auth gating happens client‑side via role until proper auth is wired).
 
-- **Regular season**: weekly on the chosen day/time, starting `seasonStart`
-- **Playoffs**: starts `seasonStart + 21 days` (3 weeks later)
+### 4. Schedule‑change notifications to members
+When staff edits a team's day/time (or division), after the DB update the page calls `send-transactional-email` once per member (any status) with a new template `intramural-schedule-update`:
+- Subject: "Schedule updated for {teamName}"
+- Body: old slot → new slot, sport name, captain name.
+- Idempotency key includes the new slot string so re‑saves don't dedupe to the original send.
+- A new edge function template file is added under `supabase/functions/send-transactional-email/` template registry (or whichever pattern the existing `intramural-invite` template uses — the same mechanism is reused).
 
-Show this in the View League dialog as a small "Season" card:
+### 5. Home page game reminders for signed‑up users
+Add a **Upcoming Intramural Games** card at the top of `src/pages/Home.tsx` (between the hero and the feature grid), shown only when the logged‑in user is on at least one team with an upcoming game.
 
-```
-Season starts: Apr 6 · Regular season: weekly · Playoffs: Apr 27
-```
+**How "upcoming" is computed (client‑side, no schema changes):**
+- Fetch teams where the user is captain (`captain_user_id = user.id`) **or** a member (`member_email = user.email` with `status = 'accepted'`).
+- For each team, parse division/day/time from `team_name` and combine with the sport's `seasonStart` to project the next weekly occurrence whose end time (start + 60 min, configurable) is at least **30 minutes in the past** before being hidden. So a 7:00 PM Monday game stays on the home page until 7:30 PM that Monday, then the next week's instance takes over.
+- Stop showing the reminder entirely once the season's playoff window ends (>3 weeks past `seasonStart`, treated as no scheduled regular‑season game; tournaments use their single date).
 
-### 3. Registration: pick league + day + time
+**Reminder card content** (one row per upcoming game, sorted by soonest):
+- Sport name + team name
+- Day, date, and time (e.g., "Monday, Apr 27 · 7:00 PM")
+- A countdown chip: "Today · in 2h 15m", "Tomorrow", "In 3 days"
+- A "View team" link that scrolls to `/intramurals` and opens the team's league dialog
+- A subtle highlight (primary tint) when the game is within 24h
 
-Replace the current Division radio with a 3-step picker inside the existing dialog (no new dialog, no layout shift):
-
-1. **League** — radio: Men's / Women's / Co-ed (filtered to those offered for the sport)
-2. **Day** — radio chips, only days the chosen league plays
-3. **Time slot** — radio chips, only times offered for that league+day
-
-The selected `division`, `day`, `time` get prefixed onto `team_name` as `[Men's · Mon 7:00 PM] The Dunkers` so it persists without a schema change. `parseTeamName` is updated to extract all three back out.
-
-### 4. My Teams moved to top
-
-Move the existing `My Teams` section so it renders **above** the sports grid (right under the page header, before the login banner / sport cards). Keep its current card layout, roster list, and status badges exactly as-is. Each team card now also shows its slot:
-
-```
-[Men's]  Mondays · 7:00 PM  · weekly
-```
-
-### 5. View League dialog updates
-
-- Schedule list shows every `division → day → time` row (one per slot).
-- Filters expand: **League**, **Day**, plus a new **Time** filter (auto-populated from the selected day).
-- Team rows show the parsed division **and** their slot (`Mon 7:00 PM`) as small badges next to the team name.
-- Filtering by day/time now correctly matches teams to their stored slot.
+The card auto‑refreshes every 60 seconds so the countdown stays accurate and games disappear at the +30 min mark without a page reload.
 
 ### Files modified
 
-- **`src/pages/Intramurals.tsx`** — only file touched. Schedule data, registration dialog picker, `parseTeamName` extended, My Teams section moved to top, league dialog filters + per-team slot display, season timeline card.
+- **`src/pages/Intramurals.tsx`** — selection styling, filter reorder, role‑gated UI (hide Register for staff, render Manage Teams + Manage Team dialog), schedule‑update email trigger.
+- **`src/pages/Home.tsx`** — new Upcoming Games card with 60s refresh and +30 min cutoff logic.
+- **`supabase/functions/send-transactional-email/`** — register a new `intramural-schedule-update` template alongside the existing `intramural-invite` one.
+- **DB migration** — `approval_status` column on `intramural_teams`; UPDATE/DELETE RLS policies on `intramural_teams` and `intramural_team_members`.
 
 ### Not changing
-
-- Database schema, RLS, edge functions, routes, invite/accept flow, visual style of any existing card or dialog.
+- Auth model, routing, capacity/fitness features, existing invite flow, visual style of unrelated cards.
 
