@@ -3,6 +3,7 @@ import { Activity, Calendar, Users, Dumbbell, HelpCircle, Megaphone } from "luci
 import { Card, CardContent } from "@/components/ui/card";
 import { useGym } from "@/context/GymContext";
 import OperatingHours from "@/components/OperatingHours";
+import UpcomingGames from "@/components/UpcomingGames";
 
 const features = [
   { to: "/capacity", label: "Capacity Tracker", desc: "See real-time occupancy by area", icon: Activity, color: "text-capacity-low" },
@@ -41,8 +42,11 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Upcoming intramural games reminder (only renders when user has games) */}
+      <UpcomingGames />
+
       {/* Feature grid */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map(({ to, label, desc, icon: Icon, color }) => (
           <Link key={to} to={to} className="group">
             <Card className="h-full transition-shadow hover:shadow-md">
