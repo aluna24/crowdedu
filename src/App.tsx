@@ -37,6 +37,7 @@ const App = () => (
               <Route path="/capacity" element={<Capacity />} />
               <Route path="/group-fitness" element={<GroupFitness />} />
               <Route path="/intramurals" element={<Intramurals />} />
+              <Route path="/intramurals/accept" element={<IntramuralAccept />} />
               <Route path="/events" element={<Events />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/login" element={<Login />} />
