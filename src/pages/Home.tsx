@@ -59,6 +59,11 @@ const Home = () => {
           </Link>
         ))}
       </section>
+
+      {/* Operating hours */}
+      <section className="mt-10 mx-auto max-w-md">
+        <OperatingHours />
+      </section>
     </div>
   );
 };
