@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Calendar, Trophy, Plus, CheckCircle, Trash2, LogIn, Mail, Loader2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Users, Calendar, Trophy, Plus, CheckCircle, Trash2, LogIn, Mail, Loader2, Eye, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -57,6 +58,9 @@ const teamSchema = z.object({
 
 const emptyMember = (): Member => ({ name: "", email: "" });
 
+const statusBadgeVariant = (s: string) =>
+  s === "accepted" ? "secondary" : s === "declined" ? "destructive" : "outline";
+
 const Intramurals = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -69,6 +73,12 @@ const Intramurals = () => {
   const [captainName, setCaptainName] = useState(user?.name ?? "");
   const [captainEmail, setCaptainEmail] = useState(user?.email ?? "");
   const [members, setMembers] = useState<Member[]>([emptyMember()]);
+
+  // League details viewer
+  const [leagueSportId, setLeagueSportId] = useState<string | null>(null);
+  const [leagueTeams, setLeagueTeams] = useState<DbTeam[]>([]);
+  const [leagueLoading, setLeagueLoading] = useState(false);
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
 
   const fetchTeams = useCallback(async () => {
     if (!user) return;
@@ -103,6 +113,23 @@ const Intramurals = () => {
     setTeamName("");
     setMembers([emptyMember()]);
     setDialogOpen(true);
+  };
+
+  const openLeague = async (sportId: string) => {
+    setLeagueSportId(sportId);
+    setExpandedTeamId(null);
+    setLeagueLoading(true);
+    const { data, error } = await supabase
+      .from("intramural_teams")
+      .select("id, sport_id, team_name, captain_name, intramural_team_members(id, member_name, member_email, status)")
+      .eq("sport_id", sportId)
+      .order("created_at", { ascending: false });
+    setLeagueLoading(false);
+    if (error) {
+      toast({ title: "Couldn't load league", description: error.message, variant: "destructive" });
+      return;
+    }
+    setLeagueTeams((data as DbTeam[]) || []);
   };
 
   const updateMember = (i: number, field: keyof Member, value: string) => {
@@ -213,6 +240,7 @@ const Intramurals = () => {
   };
 
   const registeredSportIds = new Set(teams.map((t) => t.sport_id));
+  const leagueSport = mockSports.find((s) => s.id === leagueSportId);
 
   return (
     <div className="container py-6">
@@ -248,14 +276,17 @@ const Intramurals = () => {
                     {full ? "Full" : `Deadline: ${sport.registrationDeadline}`}
                   </Badge>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openLeague(sport.id)}>
+                    <Eye className="h-4 w-4" /> View league
+                  </Button>
                   {registered ? (
-                    <Button size="sm" variant="outline" disabled className="gap-1.5 w-full">
+                    <Button size="sm" variant="outline" disabled className="gap-1.5 flex-1">
                       <CheckCircle className="h-4 w-4 text-capacity-low" /> Registered
                     </Button>
                   ) : (
-                    <Button size="sm" className="w-full" disabled={full} onClick={() => openRegister(sport.id)}>
-                      {full ? "Registration Closed" : isAuthenticated ? "Register Team" : "Log in to register"}
+                    <Button size="sm" className="flex-1" disabled={full} onClick={() => openRegister(sport.id)}>
+                      {full ? "Closed" : isAuthenticated ? "Register" : "Log in"}
                     </Button>
                   )}
                 </div>
@@ -265,6 +296,7 @@ const Intramurals = () => {
         })}
       </div>
 
+      {/* Registration dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -335,23 +367,127 @@ const Intramurals = () => {
         </DialogContent>
       </Dialog>
 
+      {/* League details dialog */}
+      <Dialog open={!!leagueSportId} onOpenChange={(o) => !o && setLeagueSportId(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{leagueSport?.name}</DialogTitle>
+          </DialogHeader>
+          {leagueSport && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-xs text-muted-foreground">Season</p>
+                  <p className="font-medium text-foreground">{leagueSport.season}</p>
+                </div>
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-xs text-muted-foreground">Format</p>
+                  <p className="font-medium text-foreground capitalize">{leagueSport.type}</p>
+                </div>
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-xs text-muted-foreground">Registration deadline</p>
+                  <p className="font-medium text-foreground">{leagueSport.registrationDeadline}</p>
+                </div>
+                <div className="rounded-md border bg-card p-3">
+                  <p className="text-xs text-muted-foreground">Capacity</p>
+                  <p className="font-medium text-foreground">{leagueSport.teamsRegistered}/{leagueSport.maxTeams} teams</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-display text-sm font-semibold text-foreground">Registered teams ({leagueTeams.length})</h3>
+                <p className="text-xs text-muted-foreground">Click a team to view its roster.</p>
+                <div className="mt-2 space-y-2">
+                  {leagueLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading teams…
+                    </div>
+                  ) : leagueTeams.length === 0 ? (
+                    <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">No teams registered yet. Be the first!</p>
+                  ) : (
+                    leagueTeams.map((t) => {
+                      const accepted = t.intramural_team_members.filter((m) => m.status === "accepted").length;
+                      const pending = t.intramural_team_members.filter((m) => m.status === "pending").length;
+                      const declined = t.intramural_team_members.filter((m) => m.status === "declined").length;
+                      const open = expandedTeamId === t.id;
+                      return (
+                        <Collapsible key={t.id} open={open} onOpenChange={(o) => setExpandedTeamId(o ? t.id : null)}>
+                          <div className="rounded-md border bg-card">
+                            <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/40 transition-colors">
+                              <div className="min-w-0">
+                                <p className="font-medium text-foreground truncate">{t.team_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  Captain: {t.captain_name} · {t.intramural_team_members.length} member{t.intramural_team_members.length === 1 ? "" : "s"}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Badge variant="secondary" className="text-xs">{accepted} ✓</Badge>
+                                {pending > 0 && <Badge variant="outline" className="text-xs">{pending} pending</Badge>}
+                                <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="border-t p-3 space-y-1.5">
+                                {t.intramural_team_members.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No members yet.</p>
+                                ) : (
+                                  t.intramural_team_members.map((mem) => (
+                                    <div key={mem.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-1.5">
+                                      <p className="text-sm text-foreground truncate">{mem.member_name}</p>
+                                      <Badge variant={statusBadgeVariant(mem.status)} className="capitalize text-xs shrink-0">
+                                        {mem.status}
+                                      </Badge>
+                                    </div>
+                                  ))
+                                )}
+                                {(accepted + pending + declined) > 0 && (
+                                  <p className="pt-1 text-xs text-muted-foreground">
+                                    {accepted} accepted · {pending} pending · {declined} declined
+                                  </p>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </div>
+                        </Collapsible>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {teams.length > 0 && (
         <section className="mt-8">
           <h2 className="font-display text-xl font-bold text-foreground">My Teams</h2>
           <div className="mt-4 space-y-3">
             {teams.map((team) => {
               const sport = mockSports.find((s) => s.id === team.sport_id);
+              const accepted = team.intramural_team_members.filter((m) => m.status === "accepted").length;
+              const pending = team.intramural_team_members.filter((m) => m.status === "pending").length;
+              const declined = team.intramural_team_members.filter((m) => m.status === "declined").length;
               return (
                 <Card key={team.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{team.team_name}</CardTitle>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base">{team.team_name}</CardTitle>
+                      {sport && (
+                        <Button size="sm" variant="ghost" onClick={() => openLeague(sport.id)}>
+                          <Eye className="h-4 w-4" /> League
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="text-sm text-muted-foreground space-y-2">
                     <p><span className="font-medium text-foreground">Sport:</span> {sport?.name}</p>
                     <p><span className="font-medium text-foreground">Captain:</span> {team.captain_name}</p>
                     {team.intramural_team_members.length > 0 && (
                       <div>
-                        <p className="font-medium text-foreground mb-1.5">Members:</p>
+                        <p className="font-medium text-foreground mb-1.5">
+                          Roster ({team.intramural_team_members.length}) — {accepted} accepted · {pending} pending · {declined} declined
+                        </p>
                         <div className="space-y-1">
                           {team.intramural_team_members.map((mem) => (
                             <div key={mem.id} className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-1.5">
@@ -359,10 +495,7 @@ const Intramurals = () => {
                                 <p className="text-foreground truncate">{mem.member_name}</p>
                                 <p className="text-xs text-muted-foreground truncate">{mem.member_email}</p>
                               </div>
-                              <Badge
-                                variant={mem.status === "accepted" ? "secondary" : mem.status === "declined" ? "destructive" : "outline"}
-                                className="capitalize shrink-0"
-                              >
+                              <Badge variant={statusBadgeVariant(mem.status)} className="capitalize shrink-0">
                                 {mem.status}
                               </Badge>
                             </div>
