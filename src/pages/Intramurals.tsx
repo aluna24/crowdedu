@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Calendar, Trophy, Plus, CheckCircle } from "lucide-react";
+import { Users, Calendar, Trophy, Plus, CheckCircle, Trash2, LogIn, Mail, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { z } from "zod";
 
 interface Sport {
   id: string;
@@ -17,14 +22,6 @@ interface Sport {
   type: "league" | "tournament";
 }
 
-interface Team {
-  id: string;
-  sportId: string;
-  name: string;
-  members: string[];
-  captain: string;
-}
-
 const mockSports: Sport[] = [
   { id: "bb", name: "Basketball (5v5)", season: "Spring 2026", registrationDeadline: "Apr 1", teamsRegistered: 8, maxTeams: 12, type: "league" },
   { id: "vb", name: "Volleyball (6v6)", season: "Spring 2026", registrationDeadline: "Apr 5", teamsRegistered: 6, maxTeams: 8, type: "league" },
@@ -33,50 +30,208 @@ const mockSports: Sport[] = [
   { id: "dg", name: "Dodgeball", season: "Spring 2026", registrationDeadline: "Apr 15", teamsRegistered: 4, maxTeams: 10, type: "tournament" },
 ];
 
+interface Member {
+  name: string;
+  email: string;
+}
+
+interface DbTeam {
+  id: string;
+  sport_id: string;
+  team_name: string;
+  captain_name: string;
+  intramural_team_members: { id: string; member_name: string; member_email: string; status: string }[];
+}
+
+const memberSchema = z.object({
+  name: z.string().trim().min(1, "Name required").max(100),
+  email: z.string().trim().email("Invalid email").max(255),
+});
+
+const teamSchema = z.object({
+  teamName: z.string().trim().min(1, "Team name required").max(100),
+  captainName: z.string().trim().min(1, "Captain name required").max(100),
+  captainEmail: z.string().trim().email("Invalid email").max(255),
+  members: z.array(memberSchema).min(1, "Add at least one member"),
+});
+
+const emptyMember = (): Member => ({ name: "", email: "" });
+
 const Intramurals = () => {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const [teams, setTeams] = useState<DbTeam[]>([]);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [teamName, setTeamName] = useState("");
-  const [captainName, setCaptainName] = useState("");
-  const [memberInput, setMemberInput] = useState("");
-  const [members, setMembers] = useState<string[]>([]);
-  const [signedUp, setSignedUp] = useState<Set<string>>(new Set());
+  const [captainName, setCaptainName] = useState(user?.name ?? "");
+  const [captainEmail, setCaptainEmail] = useState(user?.email ?? "");
+  const [members, setMembers] = useState<Member[]>([emptyMember()]);
 
-  const addMember = () => {
-    const name = memberInput.trim();
-    if (name && !members.includes(name)) {
-      setMembers([...members, name]);
-      setMemberInput("");
+  const fetchTeams = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("intramural_teams")
+      .select("id, sport_id, team_name, captain_name, intramural_team_members(id, member_name, member_email, status)")
+      .eq("captain_user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast({ title: "Couldn't load teams", description: error.message, variant: "destructive" });
+      return;
     }
+    setTeams((data as DbTeam[]) || []);
+  }, [user]);
+
+  useEffect(() => { fetchTeams(); }, [fetchTeams]);
+
+  useEffect(() => {
+    if (user) {
+      setCaptainName((prev) => prev || user.name);
+      setCaptainEmail((prev) => prev || user.email);
+    }
+  }, [user]);
+
+  const openRegister = (sportId: string) => {
+    if (!isAuthenticated) {
+      toast({ title: "Please log in", description: "You must be logged in to register a team." });
+      navigate("/login");
+      return;
+    }
+    setSelectedSport(sportId);
+    setTeamName("");
+    setMembers([emptyMember()]);
+    setDialogOpen(true);
   };
 
-  const handleRegister = () => {
-    if (!selectedSport || !teamName.trim() || !captainName.trim()) return;
-    const newTeam: Team = {
-      id: crypto.randomUUID(),
-      sportId: selectedSport,
-      name: teamName.trim(),
-      captain: captainName.trim(),
-      members: [...members],
-    };
-    setTeams([...teams, newTeam]);
-    setSignedUp(new Set(signedUp).add(selectedSport));
-    setTeamName("");
-    setCaptainName("");
-    setMembers([]);
-    setSelectedSport(null);
+  const updateMember = (i: number, field: keyof Member, value: string) => {
+    setMembers((prev) => prev.map((m, j) => (j === i ? { ...m, [field]: value } : m)));
   };
+
+  const addMemberRow = () => setMembers((prev) => [...prev, emptyMember()]);
+  const addTenRows = () => setMembers((prev) => [...prev, ...Array.from({ length: 10 }, emptyMember)]);
+  const removeMember = (i: number) => setMembers((prev) => prev.filter((_, j) => j !== i));
+
+  const handleRegister = async () => {
+    if (!user || !selectedSport) return;
+
+    const cleanedMembers = members.map((m) => ({ name: m.name.trim(), email: m.email.trim() })).filter((m) => m.name || m.email);
+    const parsed = teamSchema.safeParse({
+      teamName: teamName.trim(),
+      captainName: captainName.trim(),
+      captainEmail: captainEmail.trim(),
+      members: cleanedMembers,
+    });
+    if (!parsed.success) {
+      toast({ title: "Check your form", description: parsed.error.errors[0]?.message, variant: "destructive" });
+      return;
+    }
+
+    const emails = new Set<string>();
+    for (const m of parsed.data.members) {
+      const e = m.email.toLowerCase();
+      if (emails.has(e)) {
+        toast({ title: "Duplicate email", description: `${m.email} appears more than once.`, variant: "destructive" });
+        return;
+      }
+      emails.add(e);
+    }
+
+    setSubmitting(true);
+
+    const { data: team, error: teamErr } = await supabase
+      .from("intramural_teams")
+      .insert({
+        sport_id: selectedSport,
+        team_name: parsed.data.teamName,
+        captain_user_id: user.id,
+        captain_name: parsed.data.captainName,
+        captain_email: parsed.data.captainEmail,
+      })
+      .select("id")
+      .single();
+
+    if (teamErr || !team) {
+      setSubmitting(false);
+      toast({ title: "Registration failed", description: teamErr?.message, variant: "destructive" });
+      return;
+    }
+
+    const { data: insertedMembers, error: memErr } = await supabase
+      .from("intramural_team_members")
+      .insert(parsed.data.members.map((m) => ({ team_id: team.id, member_name: m.name, member_email: m.email })))
+      .select("id, member_name, member_email, invite_token");
+
+    if (memErr) {
+      setSubmitting(false);
+      toast({ title: "Couldn't add members", description: memErr.message, variant: "destructive" });
+      return;
+    }
+
+    const sportName = mockSports.find((s) => s.id === selectedSport)?.name ?? "";
+    let emailsSent = 0;
+    let emailsFailed = 0;
+
+    await Promise.all(
+      (insertedMembers || []).map(async (m) => {
+        const acceptUrl = `${window.location.origin}/intramurals/accept?token=${m.invite_token}`;
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "intramural-invite",
+            recipientEmail: m.member_email,
+            idempotencyKey: `intramural-invite-${m.id}`,
+            templateData: {
+              memberName: m.member_name,
+              captainName: parsed.data.captainName,
+              teamName: parsed.data.teamName,
+              sportName,
+              acceptUrl,
+            },
+          },
+        });
+        if (error) emailsFailed++; else emailsSent++;
+      })
+    );
+
+    setSubmitting(false);
+    setDialogOpen(false);
+
+    if (emailsFailed > 0 && emailsSent === 0) {
+      toast({
+        title: "Team registered, invites pending",
+        description: "Email isn't set up yet, so invitations weren't sent. Members can still be invited later.",
+      });
+    } else {
+      toast({
+        title: "Team registered!",
+        description: `${emailsSent} invitation${emailsSent === 1 ? "" : "s"} sent.`,
+      });
+    }
+
+    fetchTeams();
+  };
+
+  const registeredSportIds = new Set(teams.map((t) => t.sport_id));
 
   return (
     <div className="container py-6">
       <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">Intramural Sports</h1>
       <p className="mt-1 text-sm text-muted-foreground">Browse leagues, sign up your team, and manage rosters.</p>
 
-      {/* Sports list */}
+      {!isAuthenticated && (
+        <Card className="mt-4 border-primary/30 bg-primary/5">
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <p className="text-sm text-foreground">Log in to register a team.</p>
+            <Button size="sm" onClick={() => navigate("/login")}><LogIn className="h-4 w-4" /> Log in</Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {mockSports.map((sport) => {
           const full = sport.teamsRegistered >= sport.maxTeams;
-          const registered = signedUp.has(sport.id);
+          const registered = registeredSportIds.has(sport.id);
           return (
             <Card key={sport.id}>
               <CardContent className="p-5">
@@ -99,48 +254,9 @@ const Intramurals = () => {
                       <CheckCircle className="h-4 w-4 text-capacity-low" /> Registered
                     </Button>
                   ) : (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="w-full" disabled={full} onClick={() => setSelectedSport(sport.id)}>
-                          {full ? "Registration Closed" : "Register Team"}
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Register for {sport.name}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 pt-2">
-                          <div>
-                            <Label>Team Name</Label>
-                            <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. The Dunkers" className="mt-1" />
-                          </div>
-                          <div>
-                            <Label>Captain Name</Label>
-                            <Input value={captainName} onChange={(e) => setCaptainName(e.target.value)} placeholder="Your name" className="mt-1" />
-                          </div>
-                          <div>
-                            <Label>Team Members</Label>
-                            <div className="mt-1 flex gap-2">
-                              <Input value={memberInput} onChange={(e) => setMemberInput(e.target.value)} placeholder="Member name" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addMember())} />
-                              <Button type="button" size="icon" variant="outline" onClick={addMember}><Plus className="h-4 w-4" /></Button>
-                            </div>
-                            {members.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {members.map((m, i) => (
-                                  <Badge key={i} variant="secondary" className="gap-1">
-                                    {m}
-                                    <button className="ml-1 text-xs text-muted-foreground hover:text-destructive" onClick={() => setMembers(members.filter((_, j) => j !== i))}>×</button>
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <Button className="w-full" onClick={handleRegister} disabled={!teamName.trim() || !captainName.trim()}>
-                            Submit Registration
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <Button size="sm" className="w-full" disabled={full} onClick={() => openRegister(sport.id)}>
+                      {full ? "Registration Closed" : isAuthenticated ? "Register Team" : "Log in to register"}
+                    </Button>
                   )}
                 </div>
               </CardContent>
@@ -149,23 +265,110 @@ const Intramurals = () => {
         })}
       </div>
 
-      {/* My Teams */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Register for {mockSports.find((s) => s.id === selectedSport)?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="teamName">Team Name</Label>
+              <Input id="teamName" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. The Dunkers" className="mt-1" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="captainName">Captain Name</Label>
+                <Input id="captainName" value={captainName} onChange={(e) => setCaptainName(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="captainEmail">Captain Email</Label>
+                <Input id="captainEmail" type="email" value={captainEmail} onChange={(e) => setCaptainEmail(e.target.value)} className="mt-1" />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Team Members ({members.length})</Label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={addMemberRow}>
+                    <Plus className="h-4 w-4" /> Add member
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={addTenRows}>
+                    +10 rows
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">No cap on team size — add as many as you need. Each member receives an email invitation to accept.</p>
+              <div className="mt-2 space-y-2">
+                {members.map((m, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
+                    <Input
+                      value={m.name}
+                      onChange={(e) => updateMember(i, "name", e.target.value)}
+                      placeholder={`Member ${i + 1} name`}
+                    />
+                    <Input
+                      type="email"
+                      value={m.email}
+                      onChange={(e) => updateMember(i, "email", e.target.value)}
+                      placeholder="email@school.edu"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeMember(i)}
+                      disabled={members.length === 1}
+                      aria-label="Remove member"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Button className="w-full" onClick={handleRegister} disabled={submitting}>
+              {submitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Registering…</>) : (<><Mail className="h-4 w-4" /> Submit & send invitations</>)}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {teams.length > 0 && (
         <section className="mt-8">
           <h2 className="font-display text-xl font-bold text-foreground">My Teams</h2>
           <div className="mt-4 space-y-3">
             {teams.map((team) => {
-              const sport = mockSports.find((s) => s.id === team.sportId);
+              const sport = mockSports.find((s) => s.id === team.sport_id);
               return (
                 <Card key={team.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{team.name}</CardTitle>
+                    <CardTitle className="text-base">{team.team_name}</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
+                  <CardContent className="text-sm text-muted-foreground space-y-2">
                     <p><span className="font-medium text-foreground">Sport:</span> {sport?.name}</p>
-                    <p><span className="font-medium text-foreground">Captain:</span> {team.captain}</p>
-                    {team.members.length > 0 && (
-                      <p><span className="font-medium text-foreground">Members:</span> {team.members.join(", ")}</p>
+                    <p><span className="font-medium text-foreground">Captain:</span> {team.captain_name}</p>
+                    {team.intramural_team_members.length > 0 && (
+                      <div>
+                        <p className="font-medium text-foreground mb-1.5">Members:</p>
+                        <div className="space-y-1">
+                          {team.intramural_team_members.map((mem) => (
+                            <div key={mem.id} className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-1.5">
+                              <div className="min-w-0">
+                                <p className="text-foreground truncate">{mem.member_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{mem.member_email}</p>
+                              </div>
+                              <Badge
+                                variant={mem.status === "accepted" ? "secondary" : mem.status === "declined" ? "destructive" : "outline"}
+                                className="capitalize shrink-0"
+                              >
+                                {mem.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 import Capacity from "./pages/Capacity";
 import GroupFitness from "./pages/GroupFitness";
 import Intramurals from "./pages/Intramurals";
+import IntramuralAccept from "./pages/IntramuralAccept";
 import Events from "./pages/Events";
 import FAQ from "./pages/FAQ";
 import Login from "./pages/Login";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/capacity" element={<Capacity />} />
               <Route path="/group-fitness" element={<GroupFitness />} />
               <Route path="/intramurals" element={<Intramurals />} />
+              <Route path="/intramurals/accept" element={<IntramuralAccept />} />
               <Route path="/events" element={<Events />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/login" element={<Login />} />

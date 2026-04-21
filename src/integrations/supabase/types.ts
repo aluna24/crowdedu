@@ -212,6 +212,77 @@ export type Database = {
         }
         Relationships: []
       }
+      intramural_team_members: {
+        Row: {
+          created_at: string
+          id: string
+          invite_token: string
+          member_email: string
+          member_name: string
+          responded_at: string | null
+          status: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_token?: string
+          member_email: string
+          member_name: string
+          responded_at?: string | null
+          status?: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_token?: string
+          member_email?: string
+          member_name?: string
+          responded_at?: string | null
+          status?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intramural_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "intramural_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intramural_teams: {
+        Row: {
+          captain_email: string
+          captain_name: string
+          captain_user_id: string
+          created_at: string
+          id: string
+          sport_id: string
+          team_name: string
+        }
+        Insert: {
+          captain_email: string
+          captain_name: string
+          captain_user_id: string
+          created_at?: string
+          id?: string
+          sport_id: string
+          team_name: string
+        }
+        Update: {
+          captain_email?: string
+          captain_name?: string
+          captain_user_id?: string
+          created_at?: string
+          id?: string
+          sport_id?: string
+          team_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -223,6 +294,10 @@ export type Database = {
       }
       reserve_class: {
         Args: { p_class_id: string; p_pass_id: string; p_user_id: string }
+        Returns: Json
+      }
+      respond_to_invite: {
+        Args: { p_response: string; p_token: string }
         Returns: Json
       }
     }
