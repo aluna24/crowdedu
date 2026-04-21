@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 import Capacity from "./pages/Capacity";
 import GroupFitness from "./pages/GroupFitness";
 import Intramurals from "./pages/Intramurals";
+import IntramuralAccept from "./pages/IntramuralAccept";
 import Events from "./pages/Events";
 import FAQ from "./pages/FAQ";
 import Login from "./pages/Login";
