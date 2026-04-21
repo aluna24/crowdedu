@@ -30,7 +30,7 @@ const Header = () => {
       <div className="container flex h-14 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Activity className="h-6 w-6 text-primary" />
-          <span className="font-display text-lg font-bold text-foreground">RecTrack</span>
+          <span className="font-display text-lg font-bold text-foreground">CrowdEDU</span>
         </Link>
 
         {/* Desktop nav */}
