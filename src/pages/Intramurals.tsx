@@ -315,6 +315,25 @@ const Intramurals = () => {
               <Label htmlFor="teamName">Team Name</Label>
               <Input id="teamName" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. The Dunkers" className="mt-1" />
             </div>
+            <div>
+              <Label>League Division</Label>
+              <RadioGroup
+                value={division}
+                onValueChange={(v) => setDivision(v as Division)}
+                className="mt-2 grid grid-cols-3 gap-2"
+              >
+                {DIVISIONS.map((d) => (
+                  <Label
+                    key={d}
+                    htmlFor={`div-${d}`}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border bg-card p-3 text-sm font-medium hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <RadioGroupItem id={`div-${d}`} value={d} />
+                    {d}
+                  </Label>
+                ))}
+              </RadioGroup>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="captainName">Captain Name</Label>
