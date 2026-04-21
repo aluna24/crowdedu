@@ -255,6 +255,7 @@ export type Database = {
       }
       intramural_teams: {
         Row: {
+          approval_status: string
           captain_email: string
           captain_name: string
           captain_user_id: string
@@ -264,6 +265,7 @@ export type Database = {
           team_name: string
         }
         Insert: {
+          approval_status?: string
           captain_email: string
           captain_name: string
           captain_user_id: string
@@ -273,6 +275,7 @@ export type Database = {
           team_name: string
         }
         Update: {
+          approval_status?: string
           captain_email?: string
           captain_name?: string
           captain_user_id?: string
