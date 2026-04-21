@@ -106,7 +106,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!error && data) {
         setFloors((prev) => applyDbRow(data as Record<string, unknown>, prev));
-        setLastUpdated(new Date());
+        const ts = parseEntryTimestamp(data as Record<string, unknown>);
+        setLastUpdated(ts ?? new Date());
       }
     };
     fetchLatest();
@@ -121,7 +122,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { event: "INSERT", schema: "public", table: "facility_count" },
         (payload) => {
           setFloors((prev) => applyDbRow(payload.new as Record<string, unknown>, prev));
-          setLastUpdated(new Date());
+          const ts = parseEntryTimestamp(payload.new as Record<string, unknown>);
+          setLastUpdated(ts ?? new Date());
         }
       )
       .subscribe();
