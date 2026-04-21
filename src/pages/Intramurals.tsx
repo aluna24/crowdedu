@@ -75,6 +75,7 @@ const Intramurals = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [teamName, setTeamName] = useState("");
+  const [division, setDivision] = useState<Division>("Co-ed");
   const [captainName, setCaptainName] = useState(user?.name ?? "");
   const [captainEmail, setCaptainEmail] = useState(user?.email ?? "");
   const [members, setMembers] = useState<Member[]>([emptyMember()]);
