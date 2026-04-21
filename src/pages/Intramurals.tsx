@@ -156,6 +156,8 @@ const Intramurals = () => {
   const openLeague = async (sportId: string) => {
     setLeagueSportId(sportId);
     setExpandedTeamId(null);
+    setLeagueDivisionFilter("all");
+    setLeagueDayFilter("all");
     setLeagueLoading(true);
     const { data, error } = await supabase
       .from("intramural_teams")
