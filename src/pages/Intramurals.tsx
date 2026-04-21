@@ -89,6 +89,12 @@ const emptyMember = (): Member => ({ name: "", email: "" });
 const statusBadgeVariant = (s: string) =>
   s === "accepted" ? "secondary" : s === "declined" ? "destructive" : "outline";
 
+const parseTeamName = (raw: string): { division: Division | null; name: string } => {
+  const m = raw.match(/^\[(Men's|Women's|Co-ed)\]\s*(.*)$/);
+  if (m) return { division: m[1] as Division, name: m[2] };
+  return { division: null, name: raw };
+};
+
 const Intramurals = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
