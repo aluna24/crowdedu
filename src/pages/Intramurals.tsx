@@ -123,8 +123,11 @@ export const parseTeamName = (raw: string): { division: Division | null; day: st
 };
 
 // Shared selection styling for radio "pill" chips
-const PILL_BASE = "flex cursor-pointer items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent";
-const PILL_SELECTED = "has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:ring-2 has-[:checked]:ring-primary/30 has-[:checked]:shadow-sm";
+const PILL_BASE = "flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors";
+const PILL_UNSELECTED = "border-border bg-card text-foreground hover:bg-accent";
+const PILL_ACTIVE = "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30 shadow-sm hover:bg-primary";
+const pillCls = (selected: boolean, enabled = true) =>
+  `${PILL_BASE} ${enabled ? (selected ? PILL_ACTIVE : PILL_UNSELECTED) : "opacity-50 cursor-not-allowed border-border bg-card text-foreground"}`;
 
 const Intramurals = () => {
   const { user, isAuthenticated } = useAuth();
@@ -278,6 +281,45 @@ const Intramurals = () => {
   const addTenRows = () => setMembers((prev) => [...prev, ...Array.from({ length: 10 }, emptyMember)]);
   const removeMember = (i: number) => setMembers((prev) => prev.filter((_, j) => j !== i));
 
+  // Returns a conflict message if any of the provided emails are already on
+  // a team in the same sport + division. Pending or accepted memberships block;
+  // declined invites do not. Pass excludeTeamId to ignore the team being edited.
+  const checkLeagueConflicts = async (
+    sportId: string,
+    targetDivision: Division,
+    emailsToCheck: string[],
+    excludeTeamId?: string,
+  ): Promise<string | null> => {
+    const sportName = mockSports.find((s) => s.id === sportId)?.name ?? "this sport";
+    const lowered = new Set(emailsToCheck.map((e) => e.trim().toLowerCase()).filter(Boolean));
+    if (lowered.size === 0) return null;
+
+    const { data, error } = await supabase
+      .from("intramural_teams")
+      .select("id, team_name, captain_email, intramural_team_members(member_email, status)")
+      .eq("sport_id", sportId);
+    if (error) return null;
+
+    for (const t of (data || []) as Array<{ id: string; team_name: string; captain_email: string | null; intramural_team_members: { member_email: string; status: string }[] }>) {
+      if (excludeTeamId && t.id === excludeTeamId) continue;
+      const { division: d, name } = parseTeamName(t.team_name);
+      if (d !== targetDivision) continue;
+      const occupants = new Set<string>();
+      if (t.captain_email) occupants.add(t.captain_email.toLowerCase());
+      for (const m of t.intramural_team_members) {
+        if (m.status === "pending" || m.status === "accepted") {
+          occupants.add(m.member_email.toLowerCase());
+        }
+      }
+      for (const e of lowered) {
+        if (occupants.has(e)) {
+          return `${e} is already on team "${name}" in the ${targetDivision} ${sportName} league. A person can only be on one team per league.`;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleRegister = async () => {
     if (!user || !selectedSport) return;
 
@@ -296,14 +338,30 @@ const Intramurals = () => {
       return;
     }
 
+    const captainLower = parsed.data.captainEmail.toLowerCase();
     const emails = new Set<string>();
     for (const m of parsed.data.members) {
       const e = m.email.toLowerCase();
+      if (e === captainLower) {
+        toast({ title: "Captain listed as member", description: `The captain's email (${m.email}) is already counted — remove it from the members list.`, variant: "destructive" });
+        return;
+      }
       if (emails.has(e)) {
         toast({ title: "Duplicate email", description: `${m.email} appears more than once.`, variant: "destructive" });
         return;
       }
       emails.add(e);
+    }
+
+    // One-team-per-league validation (captain + all members)
+    const conflict = await checkLeagueConflicts(
+      selectedSport,
+      parsed.data.division,
+      [parsed.data.captainEmail, ...parsed.data.members.map((m) => m.email)],
+    );
+    if (conflict) {
+      toast({ title: "Already registered in this league", description: conflict, variant: "destructive" });
+      return;
     }
 
     setSubmitting(true);
@@ -471,6 +529,27 @@ const Intramurals = () => {
       toast({ title: "No changes", description: "Slot is already set to that." });
       return;
     }
+
+    // If the division is changing, validate roster against the target league
+    if (parsed.division !== manageDivision) {
+      const rosterEmails = [
+        ...(manageTeam.captain_email ? [manageTeam.captain_email] : []),
+        ...manageTeam.intramural_team_members
+          .filter((m) => m.status === "pending" || m.status === "accepted")
+          .map((m) => m.member_email),
+      ];
+      const conflict = await checkLeagueConflicts(
+        manageTeam.sport_id,
+        manageDivision,
+        rosterEmails,
+        manageTeam.id,
+      );
+      if (conflict) {
+        toast({ title: "League conflict", description: conflict, variant: "destructive" });
+        return;
+      }
+    }
+
     setManageSaving(true);
     const newName = encodeTeamName(manageDivision, manageDay, manageTime, parsed.name);
     const { error } = await supabase.from("intramural_teams").update({ team_name: newName }).eq("id", manageTeam.id);
@@ -697,7 +776,7 @@ const Intramurals = () => {
                     <Label
                       key={d}
                       htmlFor={`div-${d}`}
-                      className={`${PILL_BASE} ${enabled ? PILL_SELECTED : "opacity-50 cursor-not-allowed"}`}
+                      className={pillCls(division === d, enabled)}
                     >
                       <RadioGroupItem id={`div-${d}`} value={d} disabled={!enabled} className="sr-only" />
                       {d}
@@ -711,7 +790,7 @@ const Intramurals = () => {
               <Label>Day</Label>
               <RadioGroup value={chosenDay} onValueChange={setChosenDay} className="mt-2 flex flex-wrap gap-2">
                 {availableDays.map((d) => (
-                  <Label key={d} htmlFor={`day-${d}`} className={`${PILL_BASE} ${PILL_SELECTED}`}>
+                  <Label key={d} htmlFor={`day-${d}`} className={pillCls(chosenDay === d)}>
                     <RadioGroupItem id={`day-${d}`} value={d} className="sr-only" />
                     <Calendar className="h-3.5 w-3.5" />
                     {d}
@@ -724,7 +803,7 @@ const Intramurals = () => {
               <Label>Time slot</Label>
               <RadioGroup value={chosenTime} onValueChange={setChosenTime} className="mt-2 flex flex-wrap gap-2">
                 {availableTimes.map((t) => (
-                  <Label key={t} htmlFor={`time-${t}`} className={`${PILL_BASE} ${PILL_SELECTED}`}>
+                  <Label key={t} htmlFor={`time-${t}`} className={pillCls(chosenTime === t)}>
                     <RadioGroupItem id={`time-${t}`} value={t} className="sr-only" />
                     <Clock className="h-3.5 w-3.5" />
                     {t}
@@ -1015,7 +1094,7 @@ const Intramurals = () => {
                       {DIVISIONS.map((d) => {
                         const enabled = manageDivisions.includes(d);
                         return (
-                          <Label key={d} htmlFor={`md-${d}`} className={`${PILL_BASE} ${enabled ? PILL_SELECTED : "opacity-50 cursor-not-allowed"}`}>
+                          <Label key={d} htmlFor={`md-${d}`} className={pillCls(manageDivision === d, enabled)}>
                             <RadioGroupItem id={`md-${d}`} value={d} disabled={!enabled} className="sr-only" />
                             {d}
                           </Label>
@@ -1028,7 +1107,7 @@ const Intramurals = () => {
                     <Label className="text-xs">Day</Label>
                     <RadioGroup value={manageDay} onValueChange={setManageDay} className="mt-1.5 flex flex-wrap gap-2">
                       {manageDays.map((d) => (
-                        <Label key={d} htmlFor={`mday-${d}`} className={`${PILL_BASE} ${PILL_SELECTED}`}>
+                        <Label key={d} htmlFor={`mday-${d}`} className={pillCls(manageDay === d)}>
                           <RadioGroupItem id={`mday-${d}`} value={d} className="sr-only" />
                           <Calendar className="h-3.5 w-3.5" /> {d}
                         </Label>
@@ -1040,7 +1119,7 @@ const Intramurals = () => {
                     <Label className="text-xs">Time</Label>
                     <RadioGroup value={manageTime} onValueChange={setManageTime} className="mt-1.5 flex flex-wrap gap-2">
                       {manageTimes.map((t) => (
-                        <Label key={t} htmlFor={`mtime-${t}`} className={`${PILL_BASE} ${PILL_SELECTED}`}>
+                        <Label key={t} htmlFor={`mtime-${t}`} className={pillCls(manageTime === t)}>
                           <RadioGroupItem id={`mtime-${t}`} value={t} className="sr-only" />
                           <Clock className="h-3.5 w-3.5" /> {t}
                         </Label>
