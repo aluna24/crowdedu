@@ -700,7 +700,7 @@ const Intramurals = () => {
                     <Label
                       key={d}
                       htmlFor={`div-${d}`}
-                      className={`${PILL_BASE} ${enabled ? PILL_SELECTED : "opacity-50 cursor-not-allowed"}`}
+                      className={pillCls(division === d, enabled)}
                     >
                       <RadioGroupItem id={`div-${d}`} value={d} disabled={!enabled} className="sr-only" />
                       {d}
@@ -714,7 +714,7 @@ const Intramurals = () => {
               <Label>Day</Label>
               <RadioGroup value={chosenDay} onValueChange={setChosenDay} className="mt-2 flex flex-wrap gap-2">
                 {availableDays.map((d) => (
-                  <Label key={d} htmlFor={`day-${d}`} className={`${PILL_BASE} ${PILL_SELECTED}`}>
+                  <Label key={d} htmlFor={`day-${d}`} className={pillCls(chosenDay === d)}>
                     <RadioGroupItem id={`day-${d}`} value={d} className="sr-only" />
                     <Calendar className="h-3.5 w-3.5" />
                     {d}
@@ -727,7 +727,7 @@ const Intramurals = () => {
               <Label>Time slot</Label>
               <RadioGroup value={chosenTime} onValueChange={setChosenTime} className="mt-2 flex flex-wrap gap-2">
                 {availableTimes.map((t) => (
-                  <Label key={t} htmlFor={`time-${t}`} className={`${PILL_BASE} ${PILL_SELECTED}`}>
+                  <Label key={t} htmlFor={`time-${t}`} className={pillCls(chosenTime === t)}>
                     <RadioGroupItem id={`time-${t}`} value={t} className="sr-only" />
                     <Clock className="h-3.5 w-3.5" />
                     {t}
