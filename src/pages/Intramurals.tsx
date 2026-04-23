@@ -123,8 +123,11 @@ export const parseTeamName = (raw: string): { division: Division | null; day: st
 };
 
 // Shared selection styling for radio "pill" chips
-const PILL_BASE = "flex cursor-pointer items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent";
-const PILL_SELECTED = "has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:ring-2 has-[:checked]:ring-primary/30 has-[:checked]:shadow-sm";
+const PILL_BASE = "flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors";
+const PILL_UNSELECTED = "border-border bg-card text-foreground hover:bg-accent";
+const PILL_ACTIVE = "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30 shadow-sm hover:bg-primary";
+const pillCls = (selected: boolean, enabled = true) =>
+  `${PILL_BASE} ${enabled ? (selected ? PILL_ACTIVE : PILL_UNSELECTED) : "opacity-50 cursor-not-allowed border-border bg-card text-foreground"}`;
 
 const Intramurals = () => {
   const { user, isAuthenticated } = useAuth();
