@@ -529,6 +529,27 @@ const Intramurals = () => {
       toast({ title: "No changes", description: "Slot is already set to that." });
       return;
     }
+
+    // If the division is changing, validate roster against the target league
+    if (parsed.division !== manageDivision) {
+      const rosterEmails = [
+        ...(manageTeam.captain_email ? [manageTeam.captain_email] : []),
+        ...manageTeam.intramural_team_members
+          .filter((m) => m.status === "pending" || m.status === "accepted")
+          .map((m) => m.member_email),
+      ];
+      const conflict = await checkLeagueConflicts(
+        manageTeam.sport_id,
+        manageDivision,
+        rosterEmails,
+        manageTeam.id,
+      );
+      if (conflict) {
+        toast({ title: "League conflict", description: conflict, variant: "destructive" });
+        return;
+      }
+    }
+
     setManageSaving(true);
     const newName = encodeTeamName(manageDivision, manageDay, manageTime, parsed.name);
     const { error } = await supabase.from("intramural_teams").update({ team_name: newName }).eq("id", manageTeam.id);
