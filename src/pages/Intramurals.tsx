@@ -281,6 +281,45 @@ const Intramurals = () => {
   const addTenRows = () => setMembers((prev) => [...prev, ...Array.from({ length: 10 }, emptyMember)]);
   const removeMember = (i: number) => setMembers((prev) => prev.filter((_, j) => j !== i));
 
+  // Returns a conflict message if any of the provided emails are already on
+  // a team in the same sport + division. Pending or accepted memberships block;
+  // declined invites do not. Pass excludeTeamId to ignore the team being edited.
+  const checkLeagueConflicts = async (
+    sportId: string,
+    targetDivision: Division,
+    emailsToCheck: string[],
+    excludeTeamId?: string,
+  ): Promise<string | null> => {
+    const sportName = mockSports.find((s) => s.id === sportId)?.name ?? "this sport";
+    const lowered = new Set(emailsToCheck.map((e) => e.trim().toLowerCase()).filter(Boolean));
+    if (lowered.size === 0) return null;
+
+    const { data, error } = await supabase
+      .from("intramural_teams")
+      .select("id, team_name, captain_email, intramural_team_members(member_email, status)")
+      .eq("sport_id", sportId);
+    if (error) return null;
+
+    for (const t of (data || []) as Array<{ id: string; team_name: string; captain_email: string | null; intramural_team_members: { member_email: string; status: string }[] }>) {
+      if (excludeTeamId && t.id === excludeTeamId) continue;
+      const { division: d, name } = parseTeamName(t.team_name);
+      if (d !== targetDivision) continue;
+      const occupants = new Set<string>();
+      if (t.captain_email) occupants.add(t.captain_email.toLowerCase());
+      for (const m of t.intramural_team_members) {
+        if (m.status === "pending" || m.status === "accepted") {
+          occupants.add(m.member_email.toLowerCase());
+        }
+      }
+      for (const e of lowered) {
+        if (occupants.has(e)) {
+          return `${e} is already on team "${name}" in the ${targetDivision} ${sportName} league. A person can only be on one team per league.`;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleRegister = async () => {
     if (!user || !selectedSport) return;
 
@@ -299,14 +338,30 @@ const Intramurals = () => {
       return;
     }
 
+    const captainLower = parsed.data.captainEmail.toLowerCase();
     const emails = new Set<string>();
     for (const m of parsed.data.members) {
       const e = m.email.toLowerCase();
+      if (e === captainLower) {
+        toast({ title: "Captain listed as member", description: `The captain's email (${m.email}) is already counted — remove it from the members list.`, variant: "destructive" });
+        return;
+      }
       if (emails.has(e)) {
         toast({ title: "Duplicate email", description: `${m.email} appears more than once.`, variant: "destructive" });
         return;
       }
       emails.add(e);
+    }
+
+    // One-team-per-league validation (captain + all members)
+    const conflict = await checkLeagueConflicts(
+      selectedSport,
+      parsed.data.division,
+      [parsed.data.captainEmail, ...parsed.data.members.map((m) => m.email)],
+    );
+    if (conflict) {
+      toast({ title: "Already registered in this league", description: conflict, variant: "destructive" });
+      return;
     }
 
     setSubmitting(true);
