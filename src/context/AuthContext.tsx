@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 export interface User {
   id: string;
@@ -10,34 +12,84 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  signUp: (email: string, fullName: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
-
-const mockUsers: { email: string; password: string; user: User }[] = [
-  { email: "student@rec.edu", password: "password", user: { id: "1", name: "Alex Student", email: "student@rec.edu", role: "student" } },
-  { email: "employee@rec.edu", password: "password", user: { id: "2", name: "Jamie Staff", email: "employee@rec.edu", role: "employee" } },
-  { email: "admin@rec.edu", password: "password", user: { id: "3", name: "Morgan Admin", email: "admin@rec.edu", role: "admin" } },
-];
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((email: string, password: string) => {
-    const found = mockUsers.find((u) => u.email === email && u.password === password);
-    if (found) {
-      setUser(found.user);
-      return true;
+  const hydrateUser = useCallback(async (sess: Session | null) => {
+    if (!sess?.user) {
+      setUser(null);
+      return;
     }
-    return false;
+    // Defer DB fetches to avoid deadlocking the auth callback
+    setTimeout(async () => {
+      const [{ data: profile }, { data: roleRow }] = await Promise.all([
+        supabase.from("profiles").select("full_name, email").eq("id", sess.user.id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", sess.user.id).maybeSingle(),
+      ]);
+      setUser({
+        id: sess.user.id,
+        email: profile?.email ?? sess.user.email ?? "",
+        name: profile?.full_name || sess.user.email?.split("@")[0] || "User",
+        role: (roleRow?.role as User["role"]) ?? "student",
+      });
+    }, 0);
   }, []);
 
-  const logout = useCallback(() => setUser(null), []);
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+      hydrateUser(sess);
+    });
+
+    supabase.auth.getSession().then(({ data: { session: sess } }) => {
+      setSession(sess);
+      hydrateUser(sess);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [hydrateUser]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, []);
+
+  const signUp = useCallback(async (email: string, fullName: string, password: string) => {
+    if (!email.toLowerCase().endsWith("@gwu.edu")) {
+      return { ok: false, error: "Student email must end with @gwu.edu" };
+    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: { full_name: fullName },
+      },
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, []);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, logout }}>
       {children}
     </AuthContext.Provider>
   );
