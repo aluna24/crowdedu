@@ -1,52 +1,62 @@
+## Real authentication with Supabase Auth
 
+Replace the in-memory mock with Supabase Auth so sessions persist, passwords are stored securely (hashed), and roles are enforced server-side.
 
-## Fix selection highlighting + prevent duplicate league registrations
+### What changes for each user type
 
-### 1. Pill highlighting (Division / Day / Time)
+- **Students** — sign up themselves on a new "Sign Up" tab in the Login page. Email must end in `@gwu.edu` (validated client-side via Zod and server-side via a database trigger). They pick their own password (min 8 chars).
+- **Employees & admins** — you give me the email + password for each (in your next message). I'll create those accounts directly in Supabase Auth so they exist immediately, with their role pre-assigned. They cannot be created via self-signup, and the `@gwu.edu` rule is bypassed for staff seeding.
+- **Anyone signed in** stays signed in across page reloads (Supabase persists the session to localStorage automatically).
 
-The `has-[:checked]` Tailwind variant isn't reliably applying with the `sr-only` radio inputs. Switch all three pill groups (division, day, time) — both in the **Register** dialog and the staff **Manage team** dialog — to a controlled approach: compute `isSelected` from React state and apply the highlighted classes directly.
+### Roles done safely
 
-Selected style (clear, high‑contrast):
-- `border-primary bg-primary text-primary-foreground ring-2 ring-primary/30 shadow-sm`
+Per Lovable's security rules, roles live in their own table, never on a profile, and are checked via a `SECURITY DEFINER` function so RLS can't be bypassed.
 
-Unselected: current `PILL_BASE` (card background, hover accent).
+```text
+auth.users (managed by Supabase)
+    │
+    ├── public.profiles            (id, full_name, email)
+    └── public.user_roles          (user_id, role)  ← role enum: student | employee | admin
+```
 
-This guarantees the pill turns navy/white the instant it's clicked, regardless of the hidden radio's checked propagation.
+A trigger on `auth.users` auto-creates a `profiles` row and assigns the `student` role on signup. The signup trigger also rejects any student email that doesn't end in `@gwu.edu` (staff accounts are seeded with the service role, which bypasses this check, so they can use any domain).
 
-### 2. One‑team‑per‑league validation
+A `has_role(user_id, role)` SQL function lets RLS policies and the app check roles without recursion.
 
-Rule: a person (captain or member) may not appear on more than one team within the **same sport + same division**. Day/time don't matter. Different divisions of the same sport are fine; different sports are fine.
+### Login page
 
-**Where the check runs** — inside `handleRegister` in `src/pages/Intramurals.tsx`, after Zod parsing and before the insert:
+Single card with two tabs:
 
-1. Build the set of emails being registered: captain email + every member email (lowercased, trimmed).
-2. Query existing teams in the same sport + division:
-   ```ts
-   supabase
-     .from("intramural_teams")
-     .select("id, team_name, captain_email, intramural_team_members(member_email, status)")
-     .eq("sport_id", selectedSport);
-   ```
-   Filter client‑side to teams whose parsed `division === chosenDivision` (division lives inside `team_name`, so we can't filter in SQL without a schema change).
-3. For each existing team in that league, collect: `captain_email` + every `member_email` whose status is `pending` or `accepted` (declined invites don't block).
-4. If any email in our new‑registration set matches any email in the existing‑league set, abort with a toast:
-   > "Already registered in this league"
-   > "{email} is already on team '{existingTeamName}' in the {division} {sportName} league. A person can only be on one team per league."
+- **Sign In** — email + password, works for all three roles.
+- **Sign Up** — email (must be `@gwu.edu`) + full name + password + confirm password. After signup, the user is logged in immediately (email confirmation will be disabled in Supabase settings so there's no waiting for a verification email — I'll note this clearly so you can flip it on later if you want).
 
-5. Same check on the **member side**: if a captain tries to invite someone who's already on another team in that league, block with the same toast naming the conflicting member.
+Errors shown inline. The existing demo-account hint box is replaced with: *"Students: sign up with your @gwu.edu email. Staff: use the credentials provided by your admin."*
 
-**Also block duplicates within the new team itself** (already partially done for emails — extend to also block the captain's own email appearing in the members list).
+### Header, ProtectedRoute, and the rest of the app
 
-### 3. Same validation for staff "Edit slot"
+- `AuthContext` is rewritten to wrap Supabase Auth: subscribes to `onAuthStateChange`, exposes `user`, `isAuthenticated`, `login`, `signUp`, `logout`, plus the user's `role` (loaded from `user_roles`).
+- `ProtectedRoute` keeps its current API (`allowedRoles`) — no changes needed in `App.tsx`.
+- `Header` keeps showing the user's first name and the staff/admin links based on role.
+- `Intramurals.tsx` and any other place that reads `user.email`/`user.id`/`user.name` keeps working — `AuthContext` exposes the same shape.
 
-When an employee/admin changes a team's **division** in the Manage Team dialog, run the same check against the team's roster (captain + accepted/pending members) vs. other teams in the new target division. If any conflict, block the save with a clear toast naming the conflicting person and team. Day/time changes (same division) skip the check.
+### Files
 
-### Files modified
-- **`src/pages/Intramurals.tsx`** only.
-  - Replace `has-[:checked]` pill styling with controlled `isSelected` className in three radio groups in the Register dialog and three in the Manage Team dialog.
-  - Add `checkLeagueConflicts(sportId, division, emails, excludeTeamId?)` helper.
-  - Call it in `handleRegister` (excludeTeamId omitted) and in `saveManageSlot` when division changes (excludeTeamId = current team).
+- **`src/context/AuthContext.tsx`** — rewrite to use `supabase.auth`. Same exported shape (`user`, `isAuthenticated`, `login`, `logout`) plus a new `signUp(email, name, password)`.
+- **`src/pages/Login.tsx`** — Tabs for Sign In / Sign Up; Zod validation; `@gwu.edu` enforcement.
+- **DB migration** — create `app_role` enum, `profiles` table, `user_roles` table with RLS, `has_role()` function, `handle_new_user()` trigger that creates the profile + assigns `student` role + rejects non-`@gwu.edu` student emails.
+- **Seed staff accounts** — once you give me the credentials, I'll create them via an edge function using the Supabase Admin API and assign their roles in `user_roles`.
+
+### What I need from you next
+
+Reply with the four values and I'll proceed:
+
+1. Admin email
+2. Admin password
+3. Employee email
+4. Employee password
+
+I'll also disable "Confirm email" in the Supabase Auth settings so signup is instant. Tell me if you'd rather keep email confirmation on.
 
 ### Not changing
-- Database schema, RLS, edge functions, routes, invite flow, or any other page.
 
+Routes, intramurals data flow, capacity, fitness, equipment tickets, or any visual style outside the Login page.
