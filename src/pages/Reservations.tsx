@@ -100,6 +100,8 @@ const Reservations = () => {
         </div>
       </header>
 
+      {isStudent && <MyReservationRequests />}
+
       {view === "Day" ? (
         <ReservationsGrid weekday={weekday} />
       ) : (
