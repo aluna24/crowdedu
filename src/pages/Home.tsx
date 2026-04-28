@@ -140,6 +140,9 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 via-background to-background">
       <div className="container py-6 md:py-10">
+        {/* 0. Staff-only capacity reminder alert */}
+        {isStaff && <CapacityReminderAlert />}
+
         {/* 1. Top alert banner */}
         {bannerOpen && (
           <div
