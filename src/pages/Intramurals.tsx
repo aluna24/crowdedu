@@ -146,6 +146,7 @@ const Intramurals = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const isStaff = user?.role === "admin" || user?.role === "employee";
+  const isAdmin = user?.role === "admin";
 
   const [teams, setTeams] = useState<DbTeam[]>([]);
   const [allTeams, setAllTeams] = useState<DbTeam[]>([]);
@@ -593,7 +594,11 @@ const Intramurals = () => {
     <div className="container py-6">
       <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">Intramural Sports</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {isStaff ? "Review, approve, and manage all intramural teams." : "Browse leagues, sign up your team, and manage rosters."}
+        {isAdmin
+          ? "Review, approve, and manage all intramural teams."
+          : isStaff
+            ? "Browse and review all intramural teams."
+            : "Browse leagues, sign up your team, and manage rosters."}
       </p>
 
       {/* STAFF: Manage Teams */}
@@ -639,9 +644,11 @@ const Intramurals = () => {
                                 Captain: {t.captain_name} · {t.intramural_team_members.length} member{t.intramural_team_members.length === 1 ? "" : "s"}
                               </p>
                             </div>
-                            <Button size="sm" variant="ghost" onClick={() => openManage(t)}>
-                              <Settings className="h-4 w-4" /> Manage
-                            </Button>
+                            {isAdmin && (
+                              <Button size="sm" variant="ghost" onClick={() => openManage(t)}>
+                                <Settings className="h-4 w-4" /> Manage
+                              </Button>
+                            )}
                           </CardContent>
                         </Card>
                       );
@@ -1031,7 +1038,7 @@ const Intramurals = () => {
                                   </div>
                                   <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
                                 </CollapsibleTrigger>
-                                {isStaff && (
+                                {isAdmin && (
                                   <Button size="sm" variant="ghost" onClick={() => openManage(t)}>
                                     <Settings className="h-4 w-4" />
                                   </Button>
@@ -1048,7 +1055,7 @@ const Intramurals = () => {
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
                                         <Badge variant={statusBadgeVariant(mem.status)} className="capitalize text-[10px]">{mem.status}</Badge>
-                                        {isStaff && (
+                                        {isAdmin && (
                                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeTeamMember(mem.id)} aria-label="Remove member">
                                             <Trash2 className="h-3.5 w-3.5" />
                                           </Button>
@@ -1094,66 +1101,70 @@ const Intramurals = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Approval</p>
-                    <p className="text-xs text-muted-foreground">Approved teams are confirmed for play.</p>
+                {isAdmin && (
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Approval</p>
+                      <p className="text-xs text-muted-foreground">Approved teams are confirmed for play.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={approved ? "outline" : "default"}
+                      onClick={() => setApproval(manageTeam.id, approved ? "pending" : "approved")}
+                    >
+                      {approved ? "Revoke approval" : "Approve team"}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={approved ? "outline" : "default"}
-                    onClick={() => setApproval(manageTeam.id, approved ? "pending" : "approved")}
-                  >
-                    {approved ? "Revoke approval" : "Approve team"}
-                  </Button>
-                </div>
+                )}
 
-                <div className="space-y-3 rounded-md border p-3">
-                  <p className="text-sm font-medium text-foreground">Edit playing slot</p>
+                {isAdmin && (
+                  <div className="space-y-3 rounded-md border p-3">
+                    <p className="text-sm font-medium text-foreground">Edit playing slot</p>
 
-                  <div>
-                    <Label className="text-xs">League</Label>
-                    <RadioGroup value={manageDivision} onValueChange={(v) => setManageDivision(v as Division)} className="mt-1.5 grid grid-cols-3 gap-2">
-                      {DIVISIONS.map((d) => {
-                        const enabled = manageDivisions.includes(d);
-                        return (
-                          <Label key={d} htmlFor={`md-${d}`} className={pillCls(manageDivision === d, enabled)}>
-                            <RadioGroupItem id={`md-${d}`} value={d} disabled={!enabled} className="sr-only" />
-                            {d}
+                    <div>
+                      <Label className="text-xs">League</Label>
+                      <RadioGroup value={manageDivision} onValueChange={(v) => setManageDivision(v as Division)} className="mt-1.5 grid grid-cols-3 gap-2">
+                        {DIVISIONS.map((d) => {
+                          const enabled = manageDivisions.includes(d);
+                          return (
+                            <Label key={d} htmlFor={`md-${d}`} className={pillCls(manageDivision === d, enabled)}>
+                              <RadioGroupItem id={`md-${d}`} value={d} disabled={!enabled} className="sr-only" />
+                              {d}
+                            </Label>
+                          );
+                        })}
+                      </RadioGroup>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Day</Label>
+                      <RadioGroup value={manageDay} onValueChange={setManageDay} className="mt-1.5 flex flex-wrap gap-2">
+                        {manageDays.map((d) => (
+                          <Label key={d} htmlFor={`mday-${d}`} className={pillCls(manageDay === d)}>
+                            <RadioGroupItem id={`mday-${d}`} value={d} className="sr-only" />
+                            <Calendar className="h-3.5 w-3.5" /> {d}
                           </Label>
-                        );
-                      })}
-                    </RadioGroup>
-                  </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs">Day</Label>
-                    <RadioGroup value={manageDay} onValueChange={setManageDay} className="mt-1.5 flex flex-wrap gap-2">
-                      {manageDays.map((d) => (
-                        <Label key={d} htmlFor={`mday-${d}`} className={pillCls(manageDay === d)}>
-                          <RadioGroupItem id={`mday-${d}`} value={d} className="sr-only" />
-                          <Calendar className="h-3.5 w-3.5" /> {d}
-                        </Label>
-                      ))}
-                    </RadioGroup>
-                  </div>
+                    <div>
+                      <Label className="text-xs">Time</Label>
+                      <RadioGroup value={manageTime} onValueChange={setManageTime} className="mt-1.5 flex flex-wrap gap-2">
+                        {manageTimes.map((t) => (
+                          <Label key={t} htmlFor={`mtime-${t}`} className={pillCls(manageTime === t)}>
+                            <RadioGroupItem id={`mtime-${t}`} value={t} className="sr-only" />
+                            <Clock className="h-3.5 w-3.5" /> {t}
+                          </Label>
+                        ))}
+                      </RadioGroup>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs">Time</Label>
-                    <RadioGroup value={manageTime} onValueChange={setManageTime} className="mt-1.5 flex flex-wrap gap-2">
-                      {manageTimes.map((t) => (
-                        <Label key={t} htmlFor={`mtime-${t}`} className={pillCls(manageTime === t)}>
-                          <RadioGroupItem id={`mtime-${t}`} value={t} className="sr-only" />
-                          <Clock className="h-3.5 w-3.5" /> {t}
-                        </Label>
-                      ))}
-                    </RadioGroup>
+                    <Button className="w-full" onClick={saveManageSlot} disabled={manageSaving}>
+                      {manageSaving ? (<><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>) : "Save slot & notify members"}
+                    </Button>
                   </div>
-
-                  <Button className="w-full" onClick={saveManageSlot} disabled={manageSaving}>
-                    {manageSaving ? (<><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>) : "Save slot & notify members"}
-                  </Button>
-                </div>
+                )}
 
                 <div className="rounded-md border p-3">
                   <p className="text-sm font-medium text-foreground mb-2">Roster ({manageTeam.intramural_team_members.length})</p>
@@ -1166,9 +1177,11 @@ const Intramurals = () => {
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Badge variant={statusBadgeVariant(mem.status)} className="capitalize text-[10px]">{mem.status}</Badge>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeTeamMember(mem.id)} aria-label="Remove member">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {isAdmin && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeTeamMember(mem.id)} aria-label="Remove member">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1178,27 +1191,29 @@ const Intramurals = () => {
                   </div>
                 </div>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full">
-                      <Trash2 className="h-4 w-4" /> Delete team
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this team?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently remove "{parsed.name}" and all of its members. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteTeam(manageTeam.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Delete team
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {isAdmin && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full">
+                        <Trash2 className="h-4 w-4" /> Delete team
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this team?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently remove "{parsed.name}" and all of its members. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteTeam(manageTeam.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete team
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             );
           })()}
