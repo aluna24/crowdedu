@@ -16,6 +16,8 @@ import IntramuralAccept from "./pages/IntramuralAccept";
 import Events from "./pages/Events";
 import FAQ from "./pages/FAQ";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Employee from "./pages/Employee";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -41,6 +43,8 @@ const App = () => (
               <Route path="/events" element={<Events />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/employee" element={<ProtectedRoute allowedRoles={["employee", "admin"]}><Employee /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><Admin /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />

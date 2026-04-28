@@ -2,3 +2,6 @@ project_id = "bzifwbdeqnyvwviikxsh"
 
 [functions.seed-staff]
 verify_jwt = false
+
+[functions.request-student-password-reset]
+verify_jwt = false
