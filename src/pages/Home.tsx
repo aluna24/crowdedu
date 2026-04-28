@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Activity,
   AlertTriangle,
@@ -22,12 +23,15 @@ import { Badge } from "@/components/ui/badge";
 import { useGym } from "@/context/GymContext";
 import { cn } from "@/lib/utils";
 
-const todaysClasses = [
-  { name: "Yoga", time: "9:00 AM" },
-  { name: "HIIT", time: "12:00 PM" },
-  { name: "Spin", time: "5:00 PM" },
-  { name: "Pilates", time: "7:00 PM" },
-];
+const parseClassTime = (t: string): number => {
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+  if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+  return h * 60 + mm;
+};
 
 const features = [
   {
@@ -82,10 +86,26 @@ const Home = () => {
   const { totalCount, totalCapacity, totalPercent, totalStatus, lastUpdated, announcement, operatingHours } =
     useGym();
   const [bannerOpen, setBannerOpen] = useState(true);
+  const [allClasses, setAllClasses] = useState<{ id: string; name: string; time: string; day: string }[]>([]);
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const updatedAt = lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const bannerText = announcement || "Lerner Center closes early Friday at 8 PM";
+
+  useEffect(() => {
+    supabase
+      .from("fitness_classes")
+      .select("id,name,time,day")
+      .then(({ data }) => setAllClasses(data ?? []));
+  }, []);
+
+  const todaysClasses = useMemo(
+    () =>
+      allClasses
+        .filter((c) => c.day === today)
+        .sort((a, b) => parseClassTime(a.time) - parseClassTime(b.time)),
+    [allClasses, today]
+  );
 
   const statusChip =
     totalStatus === "Low"
@@ -97,9 +117,18 @@ const Home = () => {
   const barColor =
     totalStatus === "Low" ? "bg-capacity-low" : totalStatus === "Moderate" ? "bg-capacity-moderate" : "bg-capacity-high";
 
+  const featureList = features.map((f) =>
+    f.title === "Group Fitness"
+      ? {
+          ...f,
+          badge: { label: `${todaysClasses.length} Today`, className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+        }
+      : f
+  );
+
   const stats = [
     { label: "Students Inside", value: totalCount, icon: Users, tint: "text-blue-600 bg-blue-500/10" },
-    { label: "Classes Today", value: 8, icon: Dumbbell, tint: "text-emerald-600 bg-emerald-500/10" },
+    { label: "Classes Today", value: todaysClasses.length, icon: Dumbbell, tint: "text-emerald-600 bg-emerald-500/10" },
     { label: "Open Courts", value: 3, icon: Trophy, tint: "text-amber-600 bg-amber-500/10" },
     { label: "Intramural Signups", value: 124, icon: UserPlus, tint: "text-indigo-600 bg-indigo-500/10" },
   ];
@@ -223,7 +252,7 @@ const Home = () => {
           className="animate-fade-in mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ animationDelay: "240ms" }}
         >
-          {features.map((feature) => {
+          {featureList.map((feature) => {
             const { to, title, desc, icon: Icon, iconBg } = feature;
             const badge = "badge" in feature ? feature.badge : undefined;
             return (
@@ -275,27 +304,33 @@ const Home = () => {
                 View all
               </Link>
             </div>
-            <ul className="space-y-2">
-              {todaysClasses.map(({ name, time }) => (
-                <li
-                  key={name}
-                  className="flex items-center justify-between rounded-xl border border-transparent bg-secondary/40 px-4 py-3 transition-colors hover:border-border hover:bg-secondary"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                      {time}
-                    </span>
-                    <span className="font-medium text-foreground">{name}</span>
-                  </div>
-                  <Link
-                    to="/group-fitness"
-                    className="text-xs font-semibold text-primary opacity-70 transition-opacity hover:opacity-100"
+            {todaysClasses.length === 0 ? (
+              <p className="rounded-xl bg-secondary/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                No classes scheduled today
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {todaysClasses.slice(0, 6).map(({ id, name, time }) => (
+                  <li
+                    key={id}
+                    className="flex items-center justify-between rounded-xl border border-transparent bg-secondary/40 px-4 py-3 transition-colors hover:border-border hover:bg-secondary"
                   >
-                    Reserve
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        {time}
+                      </span>
+                      <span className="font-medium text-foreground">{name}</span>
+                    </div>
+                    <Link
+                      to="/group-fitness"
+                      className="text-xs font-semibold text-primary opacity-70 transition-opacity hover:opacity-100"
+                    >
+                      Reserve
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Operating hours */}
