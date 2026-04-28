@@ -146,6 +146,7 @@ const Intramurals = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const isStaff = user?.role === "admin" || user?.role === "employee";
+  const isAdmin = user?.role === "admin";
 
   const [teams, setTeams] = useState<DbTeam[]>([]);
   const [allTeams, setAllTeams] = useState<DbTeam[]>([]);
