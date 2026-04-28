@@ -1038,7 +1038,7 @@ const Intramurals = () => {
                                   </div>
                                   <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
                                 </CollapsibleTrigger>
-                                {isStaff && (
+                                {isAdmin && (
                                   <Button size="sm" variant="ghost" onClick={() => openManage(t)}>
                                     <Settings className="h-4 w-4" />
                                   </Button>
