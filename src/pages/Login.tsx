@@ -37,7 +37,7 @@ const signUpSchema = z
   .refine((d) => d.password === d.confirm, { message: "Passwords do not match", path: ["confirm"] });
 
 const Login = () => {
-  const { login, signUp, isAuthenticated } = useAuth();
+  const { login, signUp, signInWithAzure, checkAzureSSO, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
