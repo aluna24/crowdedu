@@ -15,6 +15,11 @@ interface GymState {
   operatingHours: { day: string; hours: string }[];
 }
 
+export interface ActiveReminder {
+  id: string;
+  created_at: string;
+}
+
 interface GymContextType extends GymState {
   updateFloorCount: (floorId: string, count: number) => void;
   setAnnouncement: (text: string) => void;
@@ -23,6 +28,8 @@ interface GymContextType extends GymState {
   totalCapacity: number;
   totalPercent: number;
   totalStatus: "Low" | "Moderate" | "High";
+  activeReminder: ActiveReminder | null;
+  createReminder: (createdBy?: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 // Mapping between app floor IDs and Supabase column names
