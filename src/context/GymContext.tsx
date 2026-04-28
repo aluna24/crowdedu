@@ -100,6 +100,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [floors, setFloors] = useState<FloorData[]>(defaultFloors);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [announcement, setAnnouncementState] = useState("");
+  const [activeReminder, setActiveReminder] = useState<ActiveReminder | null>(null);
 
   // Fetch latest row on mount
   useEffect(() => {
@@ -120,10 +121,40 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchLatest();
   }, []);
 
-  // Subscribe to realtime inserts
+  // Fetch active reminder on mount
+  useEffect(() => {
+    const fetchReminder = async () => {
+      const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from("capacity_reminders")
+        .select("id, created_at")
+        .is("resolved_at", null)
+        .gte("created_at", tenMinAgo)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) setActiveReminder(data as ActiveReminder);
+    };
+    fetchReminder();
+  }, []);
+
+  // Auto-expire local reminder after 10 minutes
+  useEffect(() => {
+    if (!activeReminder) return;
+    const ageMs = Date.now() - new Date(activeReminder.created_at).getTime();
+    const remaining = 10 * 60 * 1000 - ageMs;
+    if (remaining <= 0) {
+      setActiveReminder(null);
+      return;
+    }
+    const t = setTimeout(() => setActiveReminder(null), remaining);
+    return () => clearTimeout(t);
+  }, [activeReminder]);
+
+  // Subscribe to realtime inserts on facility_count + capacity_reminders
   useEffect(() => {
     const channel = supabase
-      .channel("facility_count_changes")
+      .channel("gym_realtime")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "facility_count" },
@@ -131,6 +162,33 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setFloors((prev) => applyDbRow(payload.new as Record<string, unknown>, prev));
           const ts = parseEntryTimestamp(payload.new as Record<string, unknown>);
           setLastUpdated(ts ?? new Date());
+          // Resolve any active reminders
+          setActiveReminder(null);
+          supabase
+            .from("capacity_reminders")
+            .update({ resolved_at: new Date().toISOString() })
+            .is("resolved_at", null)
+            .then(() => {});
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "capacity_reminders" },
+        (payload) => {
+          const row = payload.new as { id: string; created_at: string; resolved_at: string | null };
+          if (!row.resolved_at) {
+            setActiveReminder({ id: row.id, created_at: row.created_at });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "capacity_reminders" },
+        (payload) => {
+          const row = payload.new as { id: string; resolved_at: string | null };
+          if (row.resolved_at) {
+            setActiveReminder((cur) => (cur?.id === row.id ? null : cur));
+          }
         }
       )
       .subscribe();
@@ -160,6 +218,17 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAnnouncementState("");
   }, []);
 
+  const createReminder = useCallback(async (createdBy?: string) => {
+    const { data, error } = await supabase
+      .from("capacity_reminders")
+      .insert({ created_by: createdBy ?? "anonymous" })
+      .select("id, created_at")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    if (data) setActiveReminder(data as ActiveReminder);
+    return { ok: true };
+  }, []);
+
   return (
     <GymContext.Provider
       value={{
@@ -174,6 +243,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         totalCapacity,
         totalPercent,
         totalStatus,
+        activeReminder,
+        createReminder,
       }}
     >
       {children}
