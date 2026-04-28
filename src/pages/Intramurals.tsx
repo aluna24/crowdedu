@@ -1117,52 +1117,54 @@ const Intramurals = () => {
                   </div>
                 )}
 
-                <div className="space-y-3 rounded-md border p-3">
-                  <p className="text-sm font-medium text-foreground">Edit playing slot</p>
+                {isAdmin && (
+                  <div className="space-y-3 rounded-md border p-3">
+                    <p className="text-sm font-medium text-foreground">Edit playing slot</p>
 
-                  <div>
-                    <Label className="text-xs">League</Label>
-                    <RadioGroup value={manageDivision} onValueChange={(v) => setManageDivision(v as Division)} className="mt-1.5 grid grid-cols-3 gap-2">
-                      {DIVISIONS.map((d) => {
-                        const enabled = manageDivisions.includes(d);
-                        return (
-                          <Label key={d} htmlFor={`md-${d}`} className={pillCls(manageDivision === d, enabled)}>
-                            <RadioGroupItem id={`md-${d}`} value={d} disabled={!enabled} className="sr-only" />
-                            {d}
+                    <div>
+                      <Label className="text-xs">League</Label>
+                      <RadioGroup value={manageDivision} onValueChange={(v) => setManageDivision(v as Division)} className="mt-1.5 grid grid-cols-3 gap-2">
+                        {DIVISIONS.map((d) => {
+                          const enabled = manageDivisions.includes(d);
+                          return (
+                            <Label key={d} htmlFor={`md-${d}`} className={pillCls(manageDivision === d, enabled)}>
+                              <RadioGroupItem id={`md-${d}`} value={d} disabled={!enabled} className="sr-only" />
+                              {d}
+                            </Label>
+                          );
+                        })}
+                      </RadioGroup>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Day</Label>
+                      <RadioGroup value={manageDay} onValueChange={setManageDay} className="mt-1.5 flex flex-wrap gap-2">
+                        {manageDays.map((d) => (
+                          <Label key={d} htmlFor={`mday-${d}`} className={pillCls(manageDay === d)}>
+                            <RadioGroupItem id={`mday-${d}`} value={d} className="sr-only" />
+                            <Calendar className="h-3.5 w-3.5" /> {d}
                           </Label>
-                        );
-                      })}
-                    </RadioGroup>
-                  </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs">Day</Label>
-                    <RadioGroup value={manageDay} onValueChange={setManageDay} className="mt-1.5 flex flex-wrap gap-2">
-                      {manageDays.map((d) => (
-                        <Label key={d} htmlFor={`mday-${d}`} className={pillCls(manageDay === d)}>
-                          <RadioGroupItem id={`mday-${d}`} value={d} className="sr-only" />
-                          <Calendar className="h-3.5 w-3.5" /> {d}
-                        </Label>
-                      ))}
-                    </RadioGroup>
-                  </div>
+                    <div>
+                      <Label className="text-xs">Time</Label>
+                      <RadioGroup value={manageTime} onValueChange={setManageTime} className="mt-1.5 flex flex-wrap gap-2">
+                        {manageTimes.map((t) => (
+                          <Label key={t} htmlFor={`mtime-${t}`} className={pillCls(manageTime === t)}>
+                            <RadioGroupItem id={`mtime-${t}`} value={t} className="sr-only" />
+                            <Clock className="h-3.5 w-3.5" /> {t}
+                          </Label>
+                        ))}
+                      </RadioGroup>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs">Time</Label>
-                    <RadioGroup value={manageTime} onValueChange={setManageTime} className="mt-1.5 flex flex-wrap gap-2">
-                      {manageTimes.map((t) => (
-                        <Label key={t} htmlFor={`mtime-${t}`} className={pillCls(manageTime === t)}>
-                          <RadioGroupItem id={`mtime-${t}`} value={t} className="sr-only" />
-                          <Clock className="h-3.5 w-3.5" /> {t}
-                        </Label>
-                      ))}
-                    </RadioGroup>
+                    <Button className="w-full" onClick={saveManageSlot} disabled={manageSaving}>
+                      {manageSaving ? (<><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>) : "Save slot & notify members"}
+                    </Button>
                   </div>
-
-                  <Button className="w-full" onClick={saveManageSlot} disabled={manageSaving}>
-                    {manageSaving ? (<><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>) : "Save slot & notify members"}
-                  </Button>
-                </div>
+                )}
 
                 <div className="rounded-md border p-3">
                   <p className="text-sm font-medium text-foreground mb-2">Roster ({manageTeam.intramural_team_members.length})</p>
