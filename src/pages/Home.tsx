@@ -255,7 +255,8 @@ const Home = () => {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </section>
 
         {/* 5. Two-column secondary section */}
