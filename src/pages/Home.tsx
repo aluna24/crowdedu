@@ -76,7 +76,7 @@ const features = [
     iconBg: "from-slate-500/15 to-slate-500/5 text-slate-600",
   },
   {
-    to: "/group-fitness",
+    to: "/reservations",
     title: "Reservations",
     desc: "Book gym floors or spaces",
     icon: MapPin,
@@ -225,7 +225,7 @@ const Home = () => {
                 View Capacity <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/group-fitness">
+            <Link to="/reservations">
               <Button size="lg" variant="outline" className="rounded-full px-6">
                 Reserve Space
               </Button>
