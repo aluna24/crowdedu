@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,14 @@ const Login = () => {
                   <Label htmlFor="si-password">Password</Label>
                   <Input id="si-password" type="password" autoComplete="current-password" value={signInData.password}
                     onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} className="mt-1" />
+                </div>
+                <div className="flex justify-end">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Forgot password? (students)
+                  </Link>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={submitting}>
