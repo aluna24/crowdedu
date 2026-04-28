@@ -18,6 +18,19 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
+import sportBasketball from "@/assets/sport-basketball.jpg";
+import sportVolleyball from "@/assets/sport-volleyball.jpg";
+import sportSoccer from "@/assets/sport-soccer.jpg";
+import sportBadminton from "@/assets/sport-badminton.jpg";
+import sportDodgeball from "@/assets/sport-dodgeball.jpg";
+
+const SPORT_IMAGES: Record<string, string> = {
+  bb: sportBasketball,
+  vb: sportVolleyball,
+  sc: sportSoccer,
+  bd: sportBadminton,
+  dg: sportDodgeball,
+};
 
 const DIVISIONS = ["Men's", "Women's", "Co-ed"] as const;
 type Division = typeof DIVISIONS[number];
@@ -718,7 +731,17 @@ const Intramurals = () => {
           const full = sport.teamsRegistered >= sport.maxTeams;
           const registered = registeredSportIds.has(sport.id);
           return (
-            <Card key={sport.id}>
+            <Card key={sport.id} className="overflow-hidden">
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+                <img
+                  src={SPORT_IMAGES[sport.id]}
+                  alt={`${sport.name} intramural sport`}
+                  loading="lazy"
+                  width={800}
+                  height={512}
+                  className="h-full w-full object-cover"
+                />
+              </div>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div>
