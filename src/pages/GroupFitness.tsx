@@ -215,7 +215,9 @@ const GroupFitness = () => {
         <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
           <Ticket className="h-5 w-5 text-primary" /> Group Fitness Passes
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">Purchase a pass to reserve spots in classes.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Group fitness classes are free for the first week of the semester; however, after that, you must purchase a group fitness pass to make a reservation. There are a variety of different options to fit your needs.
+        </p>
 
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {PASS_OPTIONS.map((opt) => (
