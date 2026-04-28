@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle } from "lucide-react";
 import EquipmentTicketForm from "@/components/EquipmentTicketForm";
 import EquipmentTicketList from "@/components/EquipmentTicketList";
+import CapacityReminderAlert from "@/components/CapacityReminderAlert";
 
 const Employee = () => {
   const { floors } = useGym();
@@ -78,6 +79,10 @@ const Employee = () => {
       <p className="mt-1 text-sm text-muted-foreground">
         Submit headcounts and report equipment maintenance issues.
       </p>
+
+      <div className="mt-6">
+        <CapacityReminderAlert />
+      </div>
 
       <Tabs defaultValue="headcount" className="mt-6">
         <TabsList>

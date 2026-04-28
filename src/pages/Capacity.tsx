@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CapacityMeter from "@/components/CapacityMeter";
 import CapacityTrends from "@/components/CapacityTrends";
+import CapacityReminderButton from "@/components/CapacityReminderButton";
 import LastUpdated from "@/components/LastUpdated";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useGym } from "@/context/GymContext";
@@ -19,6 +20,7 @@ const Capacity = () => {
         <div className="mt-2">
           <LastUpdated />
         </div>
+        <CapacityReminderButton />
       </div>
       <AnnouncementBanner />
 

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, Trash2 } from "lucide-react";
 import EquipmentTicketList from "@/components/EquipmentTicketList";
+import CapacityReminderAlert from "@/components/CapacityReminderAlert";
 
 const Admin = () => {
   const { announcement, setAnnouncement, clearAnnouncement } = useGym();
@@ -30,6 +31,10 @@ const Admin = () => {
       <p className="mt-1 text-sm text-muted-foreground">
         Post announcements and review equipment maintenance tickets.
       </p>
+
+      <div className="mt-6">
+        <CapacityReminderAlert />
+      </div>
 
       <Tabs defaultValue="announcement" className="mt-6">
         <TabsList>

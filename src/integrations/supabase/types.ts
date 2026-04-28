@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      capacity_reminders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          resolved_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
       class_reservations: {
         Row: {
           class_id: string
