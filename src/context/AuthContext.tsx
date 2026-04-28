@@ -15,6 +15,8 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (email: string, fullName: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  signInWithAzure: () => Promise<{ ok: boolean; error?: string }>;
+  checkAzureSSO: () => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
