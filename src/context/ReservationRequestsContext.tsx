@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { RESERVATIONS } from "@/data/reservationsSeed";
 
-export type RequestStatus = "pending" | "approved" | "denied";
+export type RequestStatus = "pending" | "approved" | "denied" | "info_requested";
 
 export interface ReservationRequest {
   id: string;
   userId: string;
   name: string;
+  email: string;
   date: string; // ISO yyyy-mm-dd
   startTime: string; // HH:mm
   endTime: string; // HH:mm
@@ -16,6 +17,7 @@ export interface ReservationRequest {
   specialRequest?: string;
   status: RequestStatus;
   denialReason?: string;
+  infoRequest?: string;
   createdAt: string;
 }
 
@@ -24,6 +26,7 @@ interface Ctx {
   addRequest: (r: Omit<ReservationRequest, "id" | "status" | "createdAt">) => { ok: boolean; error?: string };
   approveRequest: (id: string) => void;
   denyRequest: (id: string, reason: string) => void;
+  requestInfo: (id: string, message: string) => void;
   clearRequest: (id: string) => void;
 }
 
@@ -42,7 +45,6 @@ export const ReservationRequestsProvider: React.FC<{ children: React.ReactNode }
     const newEnd = toMin(r.endTime);
     const weekday = new Date(`${r.date}T00:00:00`).getDay();
 
-    // Check existing seed reservations for same space + weekday
     const seedConflict = RESERVATIONS.find(
       (sr) =>
         sr.space === r.space &&
@@ -54,7 +56,6 @@ export const ReservationRequestsProvider: React.FC<{ children: React.ReactNode }
       return { ok: false, error: `Conflicts with "${seedConflict.title}" already booked in ${r.space}.` };
     }
 
-    // Check pending/approved requests for same space + date
     let conflict: ReservationRequest | undefined;
     setRequests((prev) => {
       conflict = prev.find(
@@ -87,11 +88,15 @@ export const ReservationRequestsProvider: React.FC<{ children: React.ReactNode }
   }, []);
 
   const approveRequest = useCallback((id: string) => {
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "approved", denialReason: undefined } : r)));
+    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "approved", denialReason: undefined, infoRequest: undefined } : r)));
   }, []);
 
   const denyRequest = useCallback((id: string, reason: string) => {
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "denied", denialReason: reason } : r)));
+  }, []);
+
+  const requestInfo = useCallback((id: string, message: string) => {
+    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "info_requested", infoRequest: message } : r)));
   }, []);
 
   const clearRequest = useCallback((id: string) => {
@@ -99,7 +104,7 @@ export const ReservationRequestsProvider: React.FC<{ children: React.ReactNode }
   }, []);
 
   return (
-    <ReservationRequestsContext.Provider value={{ requests, addRequest, approveRequest, denyRequest, clearRequest }}>
+    <ReservationRequestsContext.Provider value={{ requests, addRequest, approveRequest, denyRequest, requestInfo, clearRequest }}>
       {children}
     </ReservationRequestsContext.Provider>
   );
