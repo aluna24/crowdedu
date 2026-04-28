@@ -80,6 +80,24 @@ const Login = () => {
     else setError(res.error || "Sign up failed.");
   };
 
+  const handleAzure = async () => {
+    setError("");
+    setSubmitting(true);
+    const res = await signInWithAzure();
+    setSubmitting(false);
+    if (!res.ok) setError(res.error || "Microsoft sign-in failed.");
+  };
+
+  const handleCheckSSO = async () => {
+    const res = await checkAzureSSO();
+    if (res.ok) {
+      toast.success("Microsoft SSO is configured and reachable.");
+    } else {
+      toast.error("Microsoft SSO unavailable", {
+        description: res.error || "Enable Azure provider in Supabase Auth settings.",
+      });
+    }
+  };
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm">
