@@ -252,7 +252,7 @@ const Home = () => {
           className="animate-fade-in mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ animationDelay: "240ms" }}
         >
-          {features.map((feature) => {
+          {featureList.map((feature) => {
             const { to, title, desc, icon: Icon, iconBg } = feature;
             const badge = "badge" in feature ? feature.badge : undefined;
             return (
