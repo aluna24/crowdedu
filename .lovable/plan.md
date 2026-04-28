@@ -1,79 +1,67 @@
-# Capacity Trends Graph
+# Capacity Update Reminder Button
 
-Add a trend visualization to the Capacity page that uses all historical rows from `facility_count` to show patrons:
-- **What capacity to expect right now** (predicted from historical average for current hour/day) — useful when live data is stale
-- **Peak hours** (when the facility is busiest)
-- **Quietest hours** (best time to visit)
-- **An hourly trend chart** for the selected area, optionally split by day-of-week
+Add a student-facing "Remind staff to update capacity" button on the Capacity page that's globally shared (one press disables it for everyone) and surfaces a notification to staff/admin until they submit a new headcount.
 
-## What the user will see
+## Behavior
 
-A new "Capacity Trends" section appears below the existing meter on `/capacity`, respecting the same area filter dropdown.
+**Button states (student view, Capacity page):**
+- **Hidden** if the latest `facility_count` row was inserted within the past hour.
+- **Enabled** if no update in the past hour AND no active reminder.
+- **Disabled (with countdown)** if a reminder was sent in the last 10 minutes — shows "Staff notified · resets in X:XX".
+- After 10 minutes with no staff update, button becomes pressable again so students can re-nudge.
+- When staff submit a new headcount, any active reminder is cleared and the button hides again until the next hour-stale window.
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  Capacity Trends                  [Today ▾] [All ▾] │
-├─────────────────────────────────────────────────────┤
-│  ⚡ Predicted now: 68% (Moderate)                   │
-│  🔥 Peak: 5–7 PM (avg 82%)                          │
-│  🌙 Quietest: 6–8 AM (avg 14%)                      │
-├─────────────────────────────────────────────────────┤
-│   Avg % full by hour                                │
-│   100│         ╱▔▔▔╲                                │
-│    50│    ╱▔▔▔╯    ╲▁                              │
-│     0│▁▁▁╯           ╲▁▁▁                          │
-│       6a  9a  12p  3p  6p  9p                       │
-└─────────────────────────────────────────────────────┘
+**Staff/Admin view:**
+- A dismissible alert banner appears at the top of the Employee dashboard and Admin panel when an active reminder exists: "Students are requesting a capacity update — please submit a new headcount." with a CTA scrolling to / linking to the Headcount form.
+- Banner auto-clears once a new `facility_count` row is inserted (detected via the existing realtime subscription).
+
+## Data Model
+
+New table `capacity_reminders` (single active row pattern):
+```
+id            uuid pk default gen_random_uuid()
+created_at    timestamptz default now()
+created_by    text  -- user id or 'anonymous'
+resolved_at   timestamptz nullable  -- set when staff submits headcount or 10min passes
 ```
 
-Three insight chips on top, then a smooth area chart below. A small toggle lets the user switch between "Today's pattern" (current weekday) and "All days averaged".
+RLS:
+- SELECT: anon + authenticated (everyone needs to see active reminder state).
+- INSERT: anon + authenticated (any signed-in student can press).
+- UPDATE: anon + authenticated (so staff submission flow can mark resolved).
 
-## Sections
+Realtime: enable on `capacity_reminders` so all clients sync instantly when one student presses.
 
-### 1. Insight chips
-- **Predicted now** — average %-full at the current hour-of-day (and weekday for "Today" view). Shown with the same Low/Moderate/High color logic.
-- **Peak window** — the 2-hour window with highest average occupancy.
-- **Quietest window** — the 2-hour window with lowest non-zero average occupancy.
+"Active reminder" query: `select * from capacity_reminders where resolved_at is null and created_at > now() - interval '10 minutes' order by created_at desc limit 1`.
 
-### 2. Hourly trend chart
-- Recharts `AreaChart` with smooth gradient (matches blue brand palette).
-- X-axis: hour of day (6 AM → 11 PM).
-- Y-axis: % full.
-- Tooltip shows hour, avg %, and avg headcount.
-- Respects the existing area filter dropdown — when "All Areas" is selected, uses total capacity; when a specific area is selected, uses that area only.
+## Frontend Changes
 
-### 3. View toggle
-Small `Tabs`: **Today** (filter to today's weekday) vs **All days** (average across every day in the dataset). Defaults to "Today".
+**`src/context/GymContext.tsx`**
+- Track `activeReminder: { id, created_at } | null` via initial fetch + realtime subscription on `capacity_reminders`.
+- Expose `createReminder()` helper (inserts a row).
+- In existing `facility_count` realtime INSERT handler: also UPDATE any unresolved reminder rows to set `resolved_at = now()`.
 
-## Technical Plan
+**New `src/components/CapacityReminderButton.tsx`**
+- Reads `lastUpdated` and `activeReminder` from context.
+- Computes: `staleMinutes = (now - lastUpdated)/60000`, `reminderAgeSec`.
+- Renders nothing if `staleMinutes < 60` AND no active reminder.
+- Renders enabled button (Bell icon, "Remind staff to update capacity") if stale and no active reminder.
+- Renders disabled chip with live countdown (ticks every 1s) if active reminder exists.
+- On click: calls `createReminder()`, optimistic toast "Staff have been notified".
 
-**New file**: `src/components/CapacityTrends.tsx`
-- Props: `filterArea: string | null` (mirrors `CapacityMeter`).
-- On mount, fetch all rows from `facility_count` (dataset is small — ~200 rows today; cap query at 5000 with `.limit(5000)` for safety).
-- Parse each row's `Date` + `Time` into a JS Date. Handles the two formats present in the data:
-  - ISO-like: `2026-04-21` + `10:26 AM`
-  - Short: `13-Feb` + `9:30 PM` (assume current year)
-  - Bucket failed parses as "unknown weekday" and exclude from "Today" view.
-- Compute, per hour bucket (0–23):
-  - average headcount for the selected scope (single area column or sum of all area columns)
-  - average % of capacity (using the same per-area capacity values from `GymContext.FLOOR_DB_MAP` + the default capacities already in `defaultFloors`)
-- Derive insights:
-  - `predictedNow` = bucket for current hour (fallback ±1 hour if empty).
-  - `peakWindow` = argmax of 2-hour rolling average.
-  - `quietWindow` = argmin of 2-hour rolling average over rows with data.
-- Render with `recharts` (already in deps via `src/components/ui/chart.tsx`) using `ChartContainer` + `AreaChart` + `Area` + gradient `defs`.
+**`src/pages/Capacity.tsx`**
+- Mount `<CapacityReminderButton />` directly under `<LastUpdated />` (only for student role — gate with `useAuth()` role check; staff/admin don't see it).
 
-**Edited file**: `src/pages/Capacity.tsx`
-- Import and render `<CapacityTrends filterArea={selectedArea === "all" ? null : selectedArea} />` directly under the existing `<CapacityMeter>`.
+**`src/pages/Employee.tsx` and `src/pages/Admin.tsx`**
+- Add a `<CapacityReminderAlert />` banner at the top: yellow/amber alert with Bell icon, message, dismiss is implicit (auto-clears on headcount submission).
+- New shared component `src/components/CapacityReminderAlert.tsx` reading `activeReminder` from context.
 
-**Capacity lookup helper**
-- Export a small `AREA_CAPACITY` map (or expose `defaultFloors` capacities) from `GymContext.tsx` so `CapacityTrends` can convert raw counts → % full without re-declaring them. Cleanest: export `getAreaCapacity(dbColumn: string): number`.
+## Files
 
-**No DB changes** — purely reads existing `facility_count` rows. No new tables, no RLS changes, no migrations.
-
-**No new dependencies** — `recharts` and `lucide-react` are already in use.
-
-## Out of scope
-- Per-day-of-week breakdown beyond the Today/All toggle (can add later).
-- Historical sparkline per area in the breakdown list.
-- ML-based forecasting (current "predicted now" is a simple historical average — appropriate for the dataset size).
+- New migration: `capacity_reminders` table + RLS + realtime publication.
+- New: `src/components/CapacityReminderButton.tsx`
+- New: `src/components/CapacityReminderAlert.tsx`
+- Edit: `src/context/GymContext.tsx` (track reminder, auto-resolve on headcount insert, expose createReminder)
+- Edit: `src/pages/Capacity.tsx` (mount button for students)
+- Edit: `src/pages/Employee.tsx` (mount alert)
+- Edit: `src/pages/Admin.tsx` (mount alert)
