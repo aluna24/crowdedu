@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogIn, UserPlus } from "lucide-react";
+import { Activity, LogIn, UserPlus, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
+
+const MicrosoftIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+    <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+    <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+    <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+  </svg>
+);
 
 const signInSchema = z.object({
   email: z.string().email("Enter a valid email"),
