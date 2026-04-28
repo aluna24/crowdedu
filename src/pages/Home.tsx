@@ -21,6 +21,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useGym } from "@/context/GymContext";
+import { useAuth } from "@/context/AuthContext";
+import CapacityReminderAlert from "@/components/CapacityReminderAlert";
 import { cn } from "@/lib/utils";
 
 const parseClassTime = (t: string): number => {
