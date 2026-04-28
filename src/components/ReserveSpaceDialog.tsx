@@ -64,7 +64,7 @@ const ReserveSpaceDialog = () => {
       return;
     }
 
-    addRequest({
+    const result = addRequest({
       userId: user?.id ?? "guest",
       name: name.trim().slice(0, 100),
       date: format(date, "yyyy-MM-dd"),
@@ -75,6 +75,11 @@ const ReserveSpaceDialog = () => {
       purpose: purpose.trim().slice(0, 500),
       specialRequest: special.trim().slice(0, 500) || undefined,
     });
+
+    if (!result.ok) {
+      toast.error(result.error ?? "Could not submit request.");
+      return;
+    }
 
     toast.success("Reservation request submitted!");
     setOpen(false);
