@@ -155,7 +155,19 @@ const Login = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-2">
+              <div className="mt-2 space-y-2">
+                <Button type="button" variant="outline" className="w-full" onClick={handleAzure} disabled={submitting}>
+                  <MicrosoftIcon /> Continue with Microsoft
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleCheckSSO}>
+                  <ShieldCheck className="mr-1 h-3 w-3" /> Check SSO status
+                </Button>
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
+                </div>
+              </div>
+              <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
                   <Label htmlFor="su-name">Full Name</Label>
                   <Input id="su-name" value={signUpData.fullName}
