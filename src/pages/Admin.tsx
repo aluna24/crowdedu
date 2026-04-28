@@ -85,6 +85,10 @@ const Admin = () => {
         <TabsContent value="tickets" className="mt-4">
           <EquipmentTicketList mode="admin" />
         </TabsContent>
+
+        <TabsContent value="reservations" className="mt-4">
+          <ReservationRequestsAdmin />
+        </TabsContent>
       </Tabs>
     </div>
   );
