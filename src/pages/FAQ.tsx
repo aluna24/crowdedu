@@ -3,7 +3,7 @@ import OperatingHours from "@/components/OperatingHours";
 
 const faqs = [
   { q: "Who can use the recreation center?", a: "All currently enrolled students have access with a valid student ID. Faculty, staff, and community members can purchase memberships at the front desk." },
-  { q: "Is there a cost for group fitness classes?", a: "Group fitness classes are free for students with a valid recreation membership. Community members may need to purchase a group fitness add-on." },
+  { q: "Is there a cost for group fitness classes?", a: "Group fitness classes are free for the first week of the semester. After the first week, a group fitness pass must be purchased to make a reservation. There are a variety of passes to fit your needs!" },
   { q: "How do intramural sports work?", a: "Register your team before the deadline. Leagues run on a round-robin format with playoffs. Tournaments are single-elimination. All skill levels welcome!" },
   { q: "What should I bring to the rec center?", a: "Bring your student ID, appropriate athletic clothing and shoes, a water bottle, and a towel. Locks are available for rental at the front desk." },
   { q: "Can I reserve courts or rooms?", a: "Courts can be reserved up to 48 hours in advance through the request form on our Reservations page. Rooms for clubs or events require a separate reservation form." },
