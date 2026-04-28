@@ -11,6 +11,7 @@ import Header from "@/components/Header";
 import Home from "./pages/Home";
 import Capacity from "./pages/Capacity";
 import GroupFitness from "./pages/GroupFitness";
+import Reservations from "./pages/Reservations";
 import Intramurals from "./pages/Intramurals";
 import IntramuralAccept from "./pages/IntramuralAccept";
 import Events from "./pages/Events";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/capacity" element={<Capacity />} />
               <Route path="/group-fitness" element={<GroupFitness />} />
+              <Route path="/reservations" element={<Reservations />} />
               <Route path="/intramurals" element={<Intramurals />} />
               <Route path="/intramurals/accept" element={<IntramuralAccept />} />
               <Route path="/events" element={<Events />} />
