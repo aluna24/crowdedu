@@ -7,17 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogIn, UserPlus, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
-
-const MicrosoftIcon = () => (
-  <svg className="h-4 w-4" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-    <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
-    <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
-    <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
-  </svg>
-);
+import { Activity, LogIn, UserPlus } from "lucide-react";
 
 const signInSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -37,7 +27,7 @@ const signUpSchema = z
   .refine((d) => d.password === d.confirm, { message: "Passwords do not match", path: ["confirm"] });
 
 const Login = () => {
-  const { login, signUp, signInWithAzure, checkAzureSSO, isAuthenticated } = useAuth();
+  const { login, signUp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
@@ -80,24 +70,6 @@ const Login = () => {
     else setError(res.error || "Sign up failed.");
   };
 
-  const handleAzure = async () => {
-    setError("");
-    setSubmitting(true);
-    const res = await signInWithAzure();
-    setSubmitting(false);
-    if (!res.ok) setError(res.error || "Microsoft sign-in failed.");
-  };
-
-  const handleCheckSSO = async () => {
-    const res = await checkAzureSSO();
-    if (res.ok) {
-      toast.success("Microsoft SSO is configured and reachable.");
-    } else {
-      toast.error("Microsoft SSO unavailable", {
-        description: res.error || "Enable Azure provider in Supabase Auth settings.",
-      });
-    }
-  };
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm">
@@ -116,19 +88,7 @@ const Login = () => {
             </TabsList>
 
             <TabsContent value="signin">
-              <div className="mt-2 space-y-2">
-                <Button type="button" variant="outline" className="w-full" onClick={handleAzure} disabled={submitting}>
-                  <MicrosoftIcon /> Continue with Microsoft
-                </Button>
-                <Button type="button" variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleCheckSSO}>
-                  <ShieldCheck className="mr-1 h-3 w-3" /> Check SSO status
-                </Button>
-                <div className="relative my-2">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-                  <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
-                </div>
-              </div>
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4 mt-2">
                 <div>
                   <Label htmlFor="si-email">Email</Label>
                   <Input id="si-email" type="email" autoComplete="email" value={signInData.email}
@@ -155,19 +115,7 @@ const Login = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <div className="mt-2 space-y-2">
-                <Button type="button" variant="outline" className="w-full" onClick={handleAzure} disabled={submitting}>
-                  <MicrosoftIcon /> Continue with Microsoft
-                </Button>
-                <Button type="button" variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleCheckSSO}>
-                  <ShieldCheck className="mr-1 h-3 w-3" /> Check SSO status
-                </Button>
-                <div className="relative my-2">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-                  <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
-                </div>
-              </div>
-              <form onSubmit={handleSignUp} className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4 mt-2">
                 <div>
                   <Label htmlFor="su-name">Full Name</Label>
                   <Input id="su-name" value={signUpData.fullName}
