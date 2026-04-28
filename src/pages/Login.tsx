@@ -117,7 +117,11 @@ const Login = () => {
             </TabsList>
 
             <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-2">
+              <div className="mt-2">
+                <MicrosoftButton />
+                <Divider />
+              </div>
+              <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
                   <Label htmlFor="si-email">Email</Label>
                   <Input id="si-email" type="email" autoComplete="email" value={signInData.email}
@@ -144,7 +148,11 @@ const Login = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-2">
+              <div className="mt-2">
+                <MicrosoftButton />
+                <Divider />
+              </div>
+              <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
                   <Label htmlFor="su-name">Full Name</Label>
                   <Input id="su-name" value={signUpData.fullName}
