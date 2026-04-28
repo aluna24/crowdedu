@@ -32,6 +32,10 @@ const Admin = () => {
         Post announcements and review equipment maintenance tickets.
       </p>
 
+      <div className="mt-6">
+        <CapacityReminderAlert />
+      </div>
+
       <Tabs defaultValue="announcement" className="mt-6">
         <TabsList>
           <TabsTrigger value="announcement">Announcement</TabsTrigger>

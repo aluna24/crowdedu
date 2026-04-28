@@ -80,6 +80,10 @@ const Employee = () => {
         Submit headcounts and report equipment maintenance issues.
       </p>
 
+      <div className="mt-6">
+        <CapacityReminderAlert />
+      </div>
+
       <Tabs defaultValue="headcount" className="mt-6">
         <TabsList>
           <TabsTrigger value="headcount">Headcount</TabsTrigger>
