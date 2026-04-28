@@ -223,7 +223,10 @@ const Home = () => {
           className="animate-fade-in mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ animationDelay: "240ms" }}
         >
-          {features.map(({ to, title, desc, icon: Icon, badge, iconBg }) => (
+          {features.map((feature) => {
+            const { to, title, desc, icon: Icon, iconBg } = feature;
+            const badge = "badge" in feature ? feature.badge : undefined;
+            return (
             <Link key={`${to}-${title}`} to={to} className="group">
               <Card className="h-full rounded-2xl border-border/60 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg">
                 <CardContent className="p-6">
