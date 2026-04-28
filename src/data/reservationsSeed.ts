@@ -42,16 +42,7 @@ export const SPACES: string[] = [
   "Squash Court #1",
   "Multipurpose Room",
   "Fitness Center",
-  "Personal Training Room",
-  "Conference Room",
   "Pool",
-  "P3",
-  "Racquetball Court (P3)",
-  "Varsity Place",
-  "Lobby",
-  "MVC Field",
-  "Smith Center Aux Gym",
-  "Smith Center Pool",
 ];
 
 // Spaces that are closed/unavailable (renders as X pattern)
@@ -109,16 +100,6 @@ export const RESERVATIONS: Reservation[] = [
   { id: "r19", space: "Multipurpose Room", title: "Vinyasa", startMin: t(18, 30), endMin: t(19, 30), color: "pink" },
   { id: "r20", space: "Multipurpose Room", title: "Alpha Phi Alpha Practice", startMin: t(19, 30), endMin: t(21), color: "pink" },
 
-  // Conference Room (academic)
-  { id: "r21", space: "Conference Room", title: "LSPA 103", startMin: t(10, 30), endMin: t(11, 30), color: "orange" },
-  { id: "r22", space: "Conference Room", title: "CREC Staff", startMin: t(11, 30), endMin: t(12, 30), color: "orange" },
-
-  // P3 - Racquetball
-  { id: "r23", space: "Racquetball Court (P3)", title: "Wrestling club - Practice", startMin: t(17), endMin: t(19), color: "black" },
-
-  // Smith Center Pool
-  { id: "r24", space: "Smith Center Pool", title: "Swimming club", startMin: t(18), endMin: t(20), color: "pink" },
-  { id: "r25", space: "Smith Center Pool", title: "Water Polo club", startMin: t(20), endMin: t(22), color: "pink" },
 ];
 
 // Hours range shown in the grid
