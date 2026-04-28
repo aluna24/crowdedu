@@ -6,6 +6,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import ReservationsGrid from "@/components/ReservationsGrid";
+import ReserveSpaceDialog from "@/components/ReserveSpaceDialog";
+import MyReservationRequests from "@/components/MyReservationRequests";
+import { useAuth } from "@/context/AuthContext";
 import { COLOR_CLASSES } from "@/data/reservationsSeed";
 
 const VIEWS = ["Day", "Week", "Month", "Space"] as const;
@@ -25,6 +28,8 @@ const LEGEND: { label: string; color: keyof typeof COLOR_CLASSES }[] = [
 const Reservations = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [view, setView] = useState<View>("Day");
+  const { user } = useAuth();
+  const isStudent = !user || user.role === "student";
 
   const weekday = useMemo(() => date.getDay(), [date]);
 
@@ -41,6 +46,7 @@ const Reservations = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {isStudent && <ReserveSpaceDialog />}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
@@ -93,6 +99,8 @@ const Reservations = () => {
           </div>
         </div>
       </header>
+
+      {isStudent && <MyReservationRequests />}
 
       {view === "Day" ? (
         <ReservationsGrid weekday={weekday} />

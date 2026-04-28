@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, Trash2 } from "lucide-react";
 import EquipmentTicketList from "@/components/EquipmentTicketList";
 import CapacityReminderAlert from "@/components/CapacityReminderAlert";
+import ReservationRequestsAdmin from "@/components/ReservationRequestsAdmin";
 
 const Admin = () => {
   const { announcement, setAnnouncement, clearAnnouncement } = useGym();
@@ -40,6 +41,7 @@ const Admin = () => {
         <TabsList>
           <TabsTrigger value="announcement">Announcement</TabsTrigger>
           <TabsTrigger value="tickets">Equipment tickets</TabsTrigger>
+          <TabsTrigger value="reservations">Reservation requests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="announcement" className="mt-4">
@@ -82,6 +84,10 @@ const Admin = () => {
 
         <TabsContent value="tickets" className="mt-4">
           <EquipmentTicketList mode="admin" />
+        </TabsContent>
+
+        <TabsContent value="reservations" className="mt-4">
+          <ReservationRequestsAdmin />
         </TabsContent>
       </Tabs>
     </div>

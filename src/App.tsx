@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GymProvider } from "@/context/GymContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { PassProvider } from "@/context/PassContext";
+import { ReservationRequestsProvider } from "@/context/ReservationRequestsContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Header from "@/components/Header";
 import Home from "./pages/Home";
@@ -31,6 +32,7 @@ const App = () => (
       <AuthProvider>
         <GymProvider>
           <PassProvider>
+          <ReservationRequestsProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -52,6 +54,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </ReservationRequestsProvider>
           </PassProvider>
         </GymProvider>
       </AuthProvider>
