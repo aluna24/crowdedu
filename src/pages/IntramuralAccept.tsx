@@ -43,14 +43,31 @@ const IntramuralAccept = () => {
     }
     (async () => {
       const { data, error } = await supabase
-        .from("intramural_team_members")
-        .select("id, member_name, member_email, status, team:intramural_teams(team_name, sport_id, captain_name)")
-        .eq("invite_token", token)
+        .rpc("get_invite_by_token", { p_token: token })
         .maybeSingle();
       if (error || !data) {
         setError("Invitation not found or invalid.");
       } else {
-        setInvite(data as unknown as InviteData);
+        const row = data as {
+          id: string;
+          member_name: string;
+          member_email: string;
+          status: string;
+          team_name: string;
+          sport_id: string;
+          captain_name: string;
+        };
+        setInvite({
+          id: row.id,
+          member_name: row.member_name,
+          member_email: row.member_email,
+          status: row.status,
+          team: {
+            team_name: row.team_name,
+            sport_id: row.sport_id,
+            captain_name: row.captain_name,
+          },
+        });
       }
       setLoading(false);
     })();
