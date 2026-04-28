@@ -1055,7 +1055,7 @@ const Intramurals = () => {
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
                                         <Badge variant={statusBadgeVariant(mem.status)} className="capitalize text-[10px]">{mem.status}</Badge>
-                                        {isStaff && (
+                                        {isAdmin && (
                                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeTeamMember(mem.id)} aria-label="Remove member">
                                             <Trash2 className="h-3.5 w-3.5" />
                                           </Button>
