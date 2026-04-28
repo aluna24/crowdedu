@@ -594,7 +594,11 @@ const Intramurals = () => {
     <div className="container py-6">
       <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">Intramural Sports</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {isStaff ? "Review, approve, and manage all intramural teams." : "Browse leagues, sign up your team, and manage rosters."}
+        {isAdmin
+          ? "Review, approve, and manage all intramural teams."
+          : isStaff
+            ? "Browse and review all intramural teams."
+            : "Browse leagues, sign up your team, and manage rosters."}
       </p>
 
       {/* STAFF: Manage Teams */}
