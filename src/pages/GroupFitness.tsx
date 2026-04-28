@@ -76,7 +76,7 @@ const GroupFitness = () => {
   useEffect(() => {
     const fetchClasses = async () => {
       setLoadingClasses(true);
-      const { data } = await supabase.from("fitness_classes").select("*");
+      const { data } = await supabase.from("fitness_classes").select("*").neq("status", "cancelled");
       setClasses(data ?? []);
       setLoadingClasses(false);
     };

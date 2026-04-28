@@ -122,6 +122,39 @@ export type Database = {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          created_at: string
+          date_label: string
+          description: string
+          id: string
+          priority: number
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_label?: string
+          description?: string
+          id?: string
+          priority?: number
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_label?: string
+          description?: string
+          id?: string
+          priority?: number
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       facility_count: {
         Row: {
           "3M": number
@@ -178,6 +211,7 @@ export type Database = {
           location: string
           max_spots: number
           name: string
+          status: string
           time: string
         }
         Insert: {
@@ -190,6 +224,7 @@ export type Database = {
           location: string
           max_spots: number
           name: string
+          status?: string
           time: string
         }
         Update: {
@@ -202,6 +237,7 @@ export type Database = {
           location?: string
           max_spots?: number
           name?: string
+          status?: string
           time?: string
         }
         Relationships: []
