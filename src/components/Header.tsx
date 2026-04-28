@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Activity, Dumbbell, Users, Megaphone, HelpCircle, BarChart3, LogIn, LogOut, ClipboardList, Shield } from "lucide-react";
+import { Activity, Dumbbell, Users, Megaphone, HelpCircle, BarChart3, LogIn, LogOut, ClipboardList, Shield, CalendarDays } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -13,6 +13,7 @@ const Header = () => {
     { to: "/", label: "Home", icon: Activity },
     { to: "/capacity", label: "Capacity", icon: BarChart3 },
     { to: "/group-fitness", label: "Fitness", icon: Dumbbell },
+    { to: "/reservations", label: "Reservations", icon: CalendarDays },
     { to: "/intramurals", label: "Intramurals", icon: Users },
     { to: "/events", label: "Events", icon: Megaphone },
     { to: "/faq", label: "FAQ", icon: HelpCircle },
