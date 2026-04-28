@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, Trash2 } from "lucide-react";
 import EquipmentTicketList from "@/components/EquipmentTicketList";
+import CapacityReminderAlert from "@/components/CapacityReminderAlert";
 
 const Admin = () => {
   const { announcement, setAnnouncement, clearAnnouncement } = useGym();

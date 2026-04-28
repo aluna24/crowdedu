@@ -20,6 +20,7 @@ const Capacity = () => {
         <div className="mt-2">
           <LastUpdated />
         </div>
+        <CapacityReminderButton />
       </div>
       <AnnouncementBanner />
 

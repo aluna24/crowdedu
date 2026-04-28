@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle } from "lucide-react";
 import EquipmentTicketForm from "@/components/EquipmentTicketForm";
 import EquipmentTicketList from "@/components/EquipmentTicketList";
+import CapacityReminderAlert from "@/components/CapacityReminderAlert";
 
 const Employee = () => {
   const { floors } = useGym();
