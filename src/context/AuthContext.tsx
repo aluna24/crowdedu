@@ -84,6 +84,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { ok: true };
   }, []);
 
+  const signInWithAzure = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        scopes: "email openid profile",
+      },
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, []);
+
+  const checkAzureSSO = useCallback(async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        skipBrowserRedirect: true,
+      },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.url) return { ok: false, error: "No authorization URL returned" };
+    return { ok: true };
+  }, []);
+
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -91,7 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, signInWithAzure, checkAzureSSO, logout }}>
+
       {children}
     </AuthContext.Provider>
   );
