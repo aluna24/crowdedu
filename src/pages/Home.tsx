@@ -87,6 +87,8 @@ const features = [
 const Home = () => {
   const { totalCount, totalCapacity, totalPercent, totalStatus, lastUpdated, announcement, operatingHours } =
     useGym();
+  const { user } = useAuth();
+  const isStaff = user?.role === "employee" || user?.role === "admin";
   const [bannerOpen, setBannerOpen] = useState(true);
   const [allClasses, setAllClasses] = useState<{ id: string; name: string; time: string; day: string }[]>([]);
 
