@@ -27,7 +27,7 @@ const signUpSchema = z
   .refine((d) => d.password === d.confirm, { message: "Passwords do not match", path: ["confirm"] });
 
 const Login = () => {
-  const { login, signUp, signInWithAzure, isAuthenticated } = useAuth();
+  const { login, signUp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
@@ -70,35 +70,6 @@ const Login = () => {
     else setError(res.error || "Sign up failed.");
   };
 
-  const handleMicrosoft = async () => {
-    setError("");
-    setSubmitting(true);
-    const res = await signInWithAzure();
-    setSubmitting(false);
-    if (!res.ok) setError(res.error || "Microsoft sign-in failed.");
-  };
-
-  const MicrosoftButton = () => (
-    <Button type="button" variant="outline" className="w-full" onClick={handleMicrosoft} disabled={submitting}>
-      <svg className="mr-2 h-4 w-4" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-        <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
-        <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
-        <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
-      </svg>
-      Continue with Microsoft
-    </Button>
-  );
-
-  const Divider = () => (
-    <div className="relative my-4">
-      <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-      <div className="relative flex justify-center text-xs uppercase">
-        <span className="bg-card px-2 text-muted-foreground">or</span>
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm">
@@ -117,11 +88,7 @@ const Login = () => {
             </TabsList>
 
             <TabsContent value="signin">
-              <div className="mt-2">
-                <MicrosoftButton />
-                <Divider />
-              </div>
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4 mt-2">
                 <div>
                   <Label htmlFor="si-email">Email</Label>
                   <Input id="si-email" type="email" autoComplete="email" value={signInData.email}
@@ -148,11 +115,7 @@ const Login = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <div className="mt-2">
-                <MicrosoftButton />
-                <Divider />
-              </div>
-              <form onSubmit={handleSignUp} className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4 mt-2">
                 <div>
                   <Label htmlFor="su-name">Full Name</Label>
                   <Input id="su-name" value={signUpData.fullName}

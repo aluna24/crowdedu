@@ -15,7 +15,6 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (email: string, fullName: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signInWithAzure: () => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -83,18 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { ok: true };
   }, []);
 
-  const signInWithAzure = useCallback(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "azure",
-      options: {
-        scopes: "email openid profile",
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  }, []);
-
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -102,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, signInWithAzure, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, logout }}>
       {children}
     </AuthContext.Provider>
   );
