@@ -9,7 +9,7 @@ const faqs = [
   { q: "Can I reserve courts or rooms?", a: "Courts can be reserved up to 48 hours in advance through the request form on our Reservations page. Rooms for clubs or events require a separate reservation form." },
   { q: "What is the guest policy?", a: "No guest are allowed in the Wellness Center. Due to DC Zoning laws, we are unable to offer guest passes at this time. We apologize for any inconvenience this may cause." },
   { q: "Are there personal training services?", a: "Yes! Certified personal trainers are available for individual and small group sessions. Visit the front desk or check the Group Fitness page for more information." },
-  { q: "How do I report a maintenance issue?", a: "Report issues to the front desk staff or email recservices@university.edu. Emergency safety concerns should be reported immediately to staff on duty." },
+  { q: "How do I report a maintenance issue?", a: "Report issues to the front desk staff or email recreation@gwu.edu. Emergency safety concerns should be reported immediately to staff on duty." },
 ];
 
 const FAQ = () => {
