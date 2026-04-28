@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { CheckCircle2, Clock, X, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, X, Trash2, MessageCircleQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useReservationRequests } from "@/context/ReservationRequestsContext";
@@ -33,16 +32,24 @@ const MyReservationRequests = () => {
                 {r.status === "denied" && (
                   <Badge variant="destructive" className="gap-1"><X className="h-3 w-3" /> Denied</Badge>
                 )}
+                {r.status === "info_requested" && (
+                  <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 gap-1">
+                    <MessageCircleQuestion className="h-3 w-3" /> Info Requested
+                  </Badge>
+                )}
               </div>
               <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{r.purpose}</p>
               {r.specialRequest && (
                 <p className="mt-0.5 text-xs text-muted-foreground"><span className="font-medium">Special:</span> {r.specialRequest}</p>
               )}
+              {r.status === "info_requested" && r.infoRequest && (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400"><span className="font-medium">Admin needs:</span> {r.infoRequest}</p>
+              )}
               {r.status === "denied" && r.denialReason && (
                 <p className="mt-1 text-xs text-destructive"><span className="font-medium">Reason:</span> {r.denialReason}</p>
               )}
             </div>
-            {r.status === "denied" && (
+            {(r.status === "denied" || r.status === "info_requested") && (
               <Button variant="ghost" size="sm" onClick={() => clearRequest(r.id)}>
                 <Trash2 className="h-4 w-4 mr-1" /> Clear
               </Button>

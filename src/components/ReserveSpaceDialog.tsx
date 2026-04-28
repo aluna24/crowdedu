@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,12 +24,16 @@ import { useReservationRequests } from "@/context/ReservationRequestsContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const ReserveSpaceDialog = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const { addRequest } = useReservationRequests();
   const [open, setOpen] = useState(false);
 
   const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [date, setDate] = useState<Date | undefined>();
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -39,6 +44,7 @@ const ReserveSpaceDialog = () => {
 
   const reset = () => {
     setName(user?.name ?? "");
+    setEmail(user?.email ?? "");
     setDate(undefined);
     setStartTime("");
     setEndTime("");
@@ -48,10 +54,31 @@ const ReserveSpaceDialog = () => {
     setSpecial("");
   };
 
+  // Not signed in → show login CTA instead of opening the form
+  if (!isAuthenticated || !user) {
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        className="gap-1.5"
+        onClick={() => {
+          toast.info("Please sign in to reserve a space.");
+          navigate("/login");
+        }}
+      >
+        <LogIn className="h-4 w-4" /> Sign in to Reserve
+      </Button>
+    );
+  }
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !date || !startTime || !endTime || !space || !occupancy || !purpose.trim()) {
+    if (!name.trim() || !email.trim() || !date || !startTime || !endTime || !space || !occupancy || !purpose.trim()) {
       toast.error("Please fill out all required fields.");
+      return;
+    }
+    if (!EMAIL_RE.test(email.trim())) {
+      toast.error("Please enter a valid email address.");
       return;
     }
     if (endTime <= startTime) {
@@ -65,8 +92,9 @@ const ReserveSpaceDialog = () => {
     }
 
     const result = addRequest({
-      userId: user?.id ?? "guest",
+      userId: user.id,
       name: name.trim().slice(0, 100),
+      email: email.trim().slice(0, 255),
       date: format(date, "yyyy-MM-dd"),
       startTime,
       endTime,
@@ -97,14 +125,20 @@ const ReserveSpaceDialog = () => {
         <DialogHeader>
           <DialogTitle>Request a Reservation</DialogTitle>
           <DialogDescription>
-            Submit a request to reserve a space. An admin will review and approve or deny it.
+            Submit a request to reserve a space. An admin will review it and approve, deny, or ask for more info.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Name *</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Name *</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email *</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} required />
+            </div>
           </div>
 
           <div className="space-y-1.5">
