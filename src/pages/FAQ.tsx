@@ -6,7 +6,7 @@ const faqs = [
   { q: "Is there a cost for group fitness classes?", a: "Group fitness classes are free for students with a valid recreation membership. Community members may need to purchase a group fitness add-on." },
   { q: "How do intramural sports work?", a: "Register your team before the deadline. Leagues run on a round-robin format with playoffs. Tournaments are single-elimination. All skill levels welcome!" },
   { q: "What should I bring to the rec center?", a: "Bring your student ID, appropriate athletic clothing and shoes, a water bottle, and a towel. Locks are available for rental at the front desk." },
-  { q: "Can I reserve courts or rooms?", a: "Courts can be reserved up to 48 hours in advance through the front desk or by calling. Rooms for clubs or events require a separate reservation form." },
+  { q: "Can I reserve courts or rooms?", a: "Courts can be reserved up to 48 hours in advance through the request form on our Reservations page. Rooms for clubs or events require a separate reservation form." },
   { q: "What is the guest policy?", a: "Each member may bring one guest per visit. Guests must sign a waiver and pay a $5 day-pass fee. The sponsoring member must remain with their guest at all times." },
   { q: "Are there personal training services?", a: "Yes! Certified personal trainers are available for individual and small group sessions. Visit the front desk or check the Group Fitness page for more information." },
   { q: "How do I report a maintenance issue?", a: "Report issues to the front desk staff or email recservices@university.edu. Emergency safety concerns should be reported immediately to staff on duty." },
