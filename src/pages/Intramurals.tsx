@@ -644,9 +644,11 @@ const Intramurals = () => {
                                 Captain: {t.captain_name} · {t.intramural_team_members.length} member{t.intramural_team_members.length === 1 ? "" : "s"}
                               </p>
                             </div>
-                            <Button size="sm" variant="ghost" onClick={() => openManage(t)}>
-                              <Settings className="h-4 w-4" /> Manage
-                            </Button>
+                            {isAdmin && (
+                              <Button size="sm" variant="ghost" onClick={() => openManage(t)}>
+                                <Settings className="h-4 w-4" /> Manage
+                              </Button>
+                            )}
                           </CardContent>
                         </Card>
                       );
