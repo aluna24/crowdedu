@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CapacityMeter from "@/components/CapacityMeter";
+import CapacityTrends from "@/components/CapacityTrends";
 import LastUpdated from "@/components/LastUpdated";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useGym } from "@/context/GymContext";
@@ -40,8 +41,9 @@ const Capacity = () => {
         </Select>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-4">
         <CapacityMeter filterArea={selectedArea === "all" ? null : selectedArea} />
+        <CapacityTrends filterArea={selectedArea === "all" ? null : selectedArea} />
       </div>
     </div>
   );
