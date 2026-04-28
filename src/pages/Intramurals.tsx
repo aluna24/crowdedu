@@ -1101,19 +1101,21 @@ const Intramurals = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Approval</p>
-                    <p className="text-xs text-muted-foreground">Approved teams are confirmed for play.</p>
+                {isAdmin && (
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Approval</p>
+                      <p className="text-xs text-muted-foreground">Approved teams are confirmed for play.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={approved ? "outline" : "default"}
+                      onClick={() => setApproval(manageTeam.id, approved ? "pending" : "approved")}
+                    >
+                      {approved ? "Revoke approval" : "Approve team"}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={approved ? "outline" : "default"}
-                    onClick={() => setApproval(manageTeam.id, approved ? "pending" : "approved")}
-                  >
-                    {approved ? "Revoke approval" : "Approve team"}
-                  </Button>
-                </div>
+                )}
 
                 <div className="space-y-3 rounded-md border p-3">
                   <p className="text-sm font-medium text-foreground">Edit playing slot</p>
