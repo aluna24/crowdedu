@@ -104,7 +104,7 @@ const Login = () => {
                     to="/forgot-password"
                     className="text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Forgot password? (students)
+                    Forgot password?
                   </Link>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}

@@ -71,6 +71,7 @@ export default {
         },
         gym: {
           navy: "hsl(var(--gym-navy))",
+          gold: "hsl(var(--gym-gold))",
           slate: "hsl(var(--gym-slate))",
           surface: "hsl(var(--gym-surface))",
         },
