@@ -393,9 +393,65 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_team_member: {
+        Args: {
+          p_captain_user_id: string
+          p_member_email: string
+          p_member_name: string
+          p_team_id: string
+        }
+        Returns: Json
+      }
       cancel_reservation: {
         Args: { p_reservation_id: string; p_user_id: string }
         Returns: Json
+      }
+      delete_team_with_members: {
+        Args: { p_captain_user_id: string; p_team_id: string }
+        Returns: Json
+      }
+      get_all_rosters_admin: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          invite_token: string
+          member_email: string
+          member_id: string
+          member_name: string
+          status: string
+          team_id: string
+        }[]
+      }
+      get_invite_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          captain_name: string
+          id: string
+          member_email: string
+          member_name: string
+          sport_id: string
+          status: string
+          team_name: string
+        }[]
+      }
+      get_my_memberships: {
+        Args: { p_email: string }
+        Returns: {
+          sport_id: string
+          team_id: string
+          team_name: string
+        }[]
+      }
+      get_team_roster: {
+        Args: { p_captain_user_id: string; p_team_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          invite_token: string
+          member_email: string
+          member_name: string
+          status: string
+        }[]
       }
       has_role: {
         Args: {
@@ -403,6 +459,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      remove_team_member: {
+        Args: { p_captain_user_id: string; p_member_id: string }
+        Returns: Json
       }
       reserve_class: {
         Args: { p_class_id: string; p_pass_id: string; p_user_id: string }
