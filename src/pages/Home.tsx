@@ -86,10 +86,26 @@ const Home = () => {
   const { totalCount, totalCapacity, totalPercent, totalStatus, lastUpdated, announcement, operatingHours } =
     useGym();
   const [bannerOpen, setBannerOpen] = useState(true);
+  const [allClasses, setAllClasses] = useState<{ id: string; name: string; time: string; day: string }[]>([]);
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const updatedAt = lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const bannerText = announcement || "Lerner Center closes early Friday at 8 PM";
+
+  useEffect(() => {
+    supabase
+      .from("fitness_classes")
+      .select("id,name,time,day")
+      .then(({ data }) => setAllClasses(data ?? []));
+  }, []);
+
+  const todaysClasses = useMemo(
+    () =>
+      allClasses
+        .filter((c) => c.day === today)
+        .sort((a, b) => parseClassTime(a.time) - parseClassTime(b.time)),
+    [allClasses, today]
+  );
 
   const statusChip =
     totalStatus === "Low"
@@ -101,9 +117,18 @@ const Home = () => {
   const barColor =
     totalStatus === "Low" ? "bg-capacity-low" : totalStatus === "Moderate" ? "bg-capacity-moderate" : "bg-capacity-high";
 
+  const featureList = features.map((f) =>
+    f.title === "Group Fitness"
+      ? {
+          ...f,
+          badge: { label: `${todaysClasses.length} Today`, className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+        }
+      : f
+  );
+
   const stats = [
     { label: "Students Inside", value: totalCount, icon: Users, tint: "text-blue-600 bg-blue-500/10" },
-    { label: "Classes Today", value: 8, icon: Dumbbell, tint: "text-emerald-600 bg-emerald-500/10" },
+    { label: "Classes Today", value: todaysClasses.length, icon: Dumbbell, tint: "text-emerald-600 bg-emerald-500/10" },
     { label: "Open Courts", value: 3, icon: Trophy, tint: "text-amber-600 bg-amber-500/10" },
     { label: "Intramural Signups", value: 124, icon: UserPlus, tint: "text-indigo-600 bg-indigo-500/10" },
   ];
