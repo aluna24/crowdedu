@@ -176,6 +176,18 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export { getStatus };
 
+// Capacity by DB column name (matches FLOOR_DB_MAP values)
+export const AREA_CAPACITY: Record<string, number> = defaultFloors.reduce(
+  (acc, f) => {
+    const col = FLOOR_DB_MAP[f.id];
+    if (col) acc[col] = f.maxCapacity;
+    return acc;
+  },
+  {} as Record<string, number>
+);
+
+export const TOTAL_CAPACITY_ALL = defaultFloors.reduce((s, f) => s + f.maxCapacity, 0);
+
 export const useGym = () => {
   const ctx = useContext(GymContext);
   if (!ctx) throw new Error("useGym must be used within GymProvider");
