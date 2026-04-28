@@ -23,12 +23,15 @@ import { Badge } from "@/components/ui/badge";
 import { useGym } from "@/context/GymContext";
 import { cn } from "@/lib/utils";
 
-const todaysClasses = [
-  { name: "Yoga", time: "9:00 AM" },
-  { name: "HIIT", time: "12:00 PM" },
-  { name: "Spin", time: "5:00 PM" },
-  { name: "Pilates", time: "7:00 PM" },
-];
+const parseClassTime = (t: string): number => {
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+  if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+  return h * 60 + mm;
+};
 
 const features = [
   {
