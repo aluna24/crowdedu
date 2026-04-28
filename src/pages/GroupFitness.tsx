@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from "react";
-import { format } from "date-fns";
+import { format, startOfToday, isSameDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,17 @@ const clampToSemester = (d: Date) => {
   if (d < SEMESTER_START) return SEMESTER_START;
   if (d > SEMESTER_END) return SEMESTER_START;
   return d;
+};
+
+// Parse "7:00 PM" -> minutes since midnight
+const parseClassTime = (t: string): number | null => {
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+  if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+  return h * 60 + mm;
 };
 
 const GroupFitness = () => {
@@ -280,7 +291,7 @@ const GroupFitness = () => {
                 if (d) setFilter("All");
               }}
               defaultMonth={selectedDate ?? SEMESTER_START}
-              disabled={(date) => date < SEMESTER_START || date > SEMESTER_END}
+              disabled={(date) => date < SEMESTER_START || date > SEMESTER_END || date < startOfToday()}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />
@@ -300,6 +311,14 @@ const GroupFitness = () => {
           const isReserved = reservations.has(cls.id);
           const isReserving = reserving === cls.id;
           const isCancelling = cancelling === cls.id;
+          // If a specific date is selected and it's today, block classes whose time has passed
+          const classMinutes = parseClassTime(cls.time);
+          const now = new Date();
+          const isPast =
+            !!selectedDate &&
+            isSameDay(selectedDate, now) &&
+            classMinutes !== null &&
+            classMinutes <= now.getHours() * 60 + now.getMinutes();
           return (
             <Card key={cls.id}>
               <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -347,6 +366,8 @@ const GroupFitness = () => {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+                  ) : isPast ? (
+                    <Button size="sm" variant="outline" disabled>Past</Button>
                   ) : !isAuthenticated ? (
                     <Button size="sm" variant="outline" disabled>Log in</Button>
                   ) : !activePass ? (
