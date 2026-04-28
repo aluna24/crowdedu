@@ -21,6 +21,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useGym } from "@/context/GymContext";
+import { useAuth } from "@/context/AuthContext";
+import CapacityReminderAlert from "@/components/CapacityReminderAlert";
 import { cn } from "@/lib/utils";
 
 const parseClassTime = (t: string): number => {
@@ -85,6 +87,8 @@ const features = [
 const Home = () => {
   const { totalCount, totalCapacity, totalPercent, totalStatus, lastUpdated, announcement, operatingHours } =
     useGym();
+  const { user } = useAuth();
+  const isStaff = user?.role === "employee" || user?.role === "admin";
   const [bannerOpen, setBannerOpen] = useState(true);
   const [allClasses, setAllClasses] = useState<{ id: string; name: string; time: string; day: string }[]>([]);
 
@@ -136,6 +140,9 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 via-background to-background">
       <div className="container py-6 md:py-10">
+        {/* 0. Staff-only capacity reminder alert */}
+        {isStaff && <CapacityReminderAlert />}
+
         {/* 1. Top alert banner */}
         {bannerOpen && (
           <div
