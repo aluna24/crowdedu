@@ -1,0 +1,1 @@
+UPDATE public.fitness_classes SET location = 'Multipurpose Room';
