@@ -104,7 +104,14 @@ const GroupFitness = () => {
     return "All";
   }, [filter, selectedDate]);
 
-  const filtered = effectiveDay === "All" ? classes : classes.filter((c) => c.day === effectiveDay);
+  const filtered = useMemo(() => {
+    const list = effectiveDay === "All" ? classes : classes.filter((c) => c.day === effectiveDay);
+    return [...list].sort((a, b) => {
+      const ta = parseClassTime(a.time) ?? Number.MAX_SAFE_INTEGER;
+      const tb = parseClassTime(b.time) ?? Number.MAX_SAFE_INTEGER;
+      return ta - tb;
+    });
+  }, [classes, effectiveDay]);
 
   const headerLabel = useMemo(() => {
     if (filter === "All" && selectedDate) return `Classes for ${format(selectedDate, "EEEE, MMM d")}`;
