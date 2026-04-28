@@ -304,27 +304,33 @@ const Home = () => {
                 View all
               </Link>
             </div>
-            <ul className="space-y-2">
-              {todaysClasses.map(({ name, time }) => (
-                <li
-                  key={name}
-                  className="flex items-center justify-between rounded-xl border border-transparent bg-secondary/40 px-4 py-3 transition-colors hover:border-border hover:bg-secondary"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                      {time}
-                    </span>
-                    <span className="font-medium text-foreground">{name}</span>
-                  </div>
-                  <Link
-                    to="/group-fitness"
-                    className="text-xs font-semibold text-primary opacity-70 transition-opacity hover:opacity-100"
+            {todaysClasses.length === 0 ? (
+              <p className="rounded-xl bg-secondary/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                No classes scheduled today
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {todaysClasses.slice(0, 6).map(({ id, name, time }) => (
+                  <li
+                    key={id}
+                    className="flex items-center justify-between rounded-xl border border-transparent bg-secondary/40 px-4 py-3 transition-colors hover:border-border hover:bg-secondary"
                   >
-                    Reserve
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        {time}
+                      </span>
+                      <span className="font-medium text-foreground">{name}</span>
+                    </div>
+                    <Link
+                      to="/group-fitness"
+                      className="text-xs font-semibold text-primary opacity-70 transition-opacity hover:opacity-100"
+                    >
+                      Reserve
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Operating hours */}
