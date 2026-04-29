@@ -15,8 +15,6 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (email: string, fullName: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signInWithAzure: () => Promise<{ ok: boolean; error?: string }>;
-  checkAzureSSO: () => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -116,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, signInWithAzure, checkAzureSSO, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!session && !!user, loading, login, signUp, logout }}>
 
       {children}
     </AuthContext.Provider>
